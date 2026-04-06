@@ -154,7 +154,9 @@ app.get('/api/status', async (req, res) => {
 
 // ── GET /api/history/:ip ─────────────────────────────────────────────────────
 // Hashrate + temp history for one miner (last 24h by default)
-app.get('/api/history/:ip', (req, res) => {
+app.get('/api/history/:ip', (req, res, next) => {
+  if (req.params.ip === 'all') return next();
+
   try {
     const hours = parseInt(req.query.hours) || 24;
     const data = getHashrateHistory(req.params.ip, hours);
