@@ -13,7 +13,7 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
-const DEMO_MODE = process.env.DEMO_MODE === 'true';
+let DEMO_MODE = process.env.DEMO_MODE === 'true';
 
 function getDemoStatus() {
   const miners = [
@@ -119,6 +119,24 @@ app.get('/', (req, res) => {
     endpoints: ['/api/status', '/api/history/all?hours=6', '/api/earnings']
   });
 });
+
+app.post('/api/demo-mode', (req, res) => {
+  try {
+    if (typeof req.body.enabled === 'boolean') {
+      DEMO_MODE = req.body.enabled;
+    } else {
+      DEMO_MODE = !DEMO_MODE;
+    }
+
+    res.json({
+      ok: true,
+      demoMode: DEMO_MODE
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 
 // ── GET /api/status ──────────────────────────────────────────────────────────
 // Latest snapshot for every miner + cluster totals
