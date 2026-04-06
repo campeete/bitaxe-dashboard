@@ -168,6 +168,9 @@ export default function App() {
   const [walletLabel, setWalletLabel] = useState(() => localStorage.getItem("walletLabel") || "Main Payout Wallet")
   const [walletAddress, setWalletAddress] = useState(() => localStorage.getItem("walletAddress") || "bc1qexamplewalletaddress0000000000000000000")
   const [walletNotes, setWalletNotes] = useState(() => localStorage.getItem("walletNotes") || "Primary BTC payout destination for cluster rewards.")
+  const [locationName, setLocationName] = useState(() => localStorage.getItem("locationName") || "Home A")
+  const [locationSubnet, setLocationSubnet] = useState(() => localStorage.getItem("locationSubnet") || "192.168.1.x")
+  const [locationNotes, setLocationNotes] = useState(() => localStorage.getItem("locationNotes") || "Primary home network for the Bitaxe cluster.")
 
   const { origEach } = calcPayouts(CREW, newMembers)
   const totalDevices  = CREW.reduce((s, m) => s + m.devices, 0)
@@ -231,6 +234,12 @@ export default function App() {
     localStorage.setItem("walletAddress", walletAddress)
     localStorage.setItem("walletNotes", walletNotes)
   }, [walletLabel, walletAddress, walletNotes])
+
+  useEffect(() => {
+    localStorage.setItem("locationName", locationName)
+    localStorage.setItem("locationSubnet", locationSubnet)
+    localStorage.setItem("locationNotes", locationNotes)
+  }, [locationName, locationSubnet, locationNotes])
 
   const btc        = status?.stats?.btc_price_usd || 0
   const prob30     = parseFloat(status?.stats?.block_hit_prob_30d  || 0)
@@ -846,11 +855,80 @@ export default function App() {
                 }}>
                   Location Profiles
                 </div>
-                <div style={{ color: "#e6edf3", fontSize: 14, marginBottom: 8 }}>
-                  Saved miner locations will go here.
+
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ color: "#8b949e", fontSize: 11, marginBottom: 6 }}>Profile Name</div>
+                  <input
+                    value={locationName}
+                    onChange={e => setLocationName(e.target.value)}
+                    style={{
+                      width: "100%",
+                      background: "#161b22",
+                      border: "1px solid #21262d",
+                      borderRadius: 8,
+                      padding: "10px 12px",
+                      color: "#e6edf3",
+                      fontSize: 13
+                    }}
+                  />
                 </div>
-                <div style={{ color: "#8b949e", fontSize: 12 }}>
-                  Add profiles like Home A, Home B, or Temporary Site.
+
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ color: "#8b949e", fontSize: 11, marginBottom: 6 }}>Expected Subnet</div>
+                  <input
+                    value={locationSubnet}
+                    onChange={e => setLocationSubnet(e.target.value)}
+                    style={{
+                      width: "100%",
+                      background: "#161b22",
+                      border: "1px solid #21262d",
+                      borderRadius: 8,
+                      padding: "10px 12px",
+                      color: "#e6edf3",
+                      fontSize: 13,
+                      fontFamily: "'Space Mono', monospace"
+                    }}
+                  />
+                </div>
+
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ color: "#8b949e", fontSize: 11, marginBottom: 6 }}>Location Notes</div>
+                  <textarea
+                    value={locationNotes}
+                    onChange={e => setLocationNotes(e.target.value)}
+                    rows={4}
+                    style={{
+                      width: "100%",
+                      background: "#161b22",
+                      border: "1px solid #21262d",
+                      borderRadius: 8,
+                      padding: "10px 12px",
+                      color: "#e6edf3",
+                      fontSize: 13,
+                      resize: "vertical"
+                    }}
+                  />
+                </div>
+
+                <div style={{
+                  marginTop: 14,
+                  padding: "12px 14px",
+                  background: "#161b22",
+                  border: "1px solid #21262d",
+                  borderRadius: 10
+                }}>
+                  <div style={{ color: "#8b949e", fontSize: 10, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>
+                    Active Profile Preview
+                  </div>
+                  <div style={{ color: "#e6edf3", fontSize: 13, marginBottom: 6 }}>
+                    <b>Name:</b> {locationName || "—"}
+                  </div>
+                  <div style={{ color: "#e6edf3", fontSize: 13, marginBottom: 6 }}>
+                    <b>Subnet:</b> {locationSubnet || "—"}
+                  </div>
+                  <div style={{ color: "#8b949e", fontSize: 12 }}>
+                    {locationNotes || "No location notes added."}
+                  </div>
                 </div>
               </div>
 
