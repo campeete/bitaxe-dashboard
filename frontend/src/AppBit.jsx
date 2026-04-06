@@ -171,6 +171,12 @@ export default function App() {
   const [locationName, setLocationName] = useState(() => localStorage.getItem("locationName") || "Home A")
   const [locationSubnet, setLocationSubnet] = useState(() => localStorage.getItem("locationSubnet") || "192.168.1.x")
   const [locationNotes, setLocationNotes] = useState(() => localStorage.getItem("locationNotes") || "Primary home network for the Bitaxe cluster.")
+  const [miner1Name, setMiner1Name] = useState(() => localStorage.getItem("miner1Name") || "Carbon-01")
+  const [miner1Ip, setMiner1Ip] = useState(() => localStorage.getItem("miner1Ip") || "192.168.1.100")
+  const [miner2Name, setMiner2Name] = useState(() => localStorage.getItem("miner2Name") || "Neon-01")
+  const [miner2Ip, setMiner2Ip] = useState(() => localStorage.getItem("miner2Ip") || "192.168.1.101")
+  const [miner3Name, setMiner3Name] = useState(() => localStorage.getItem("miner3Name") || "Argon-01")
+  const [miner3Ip, setMiner3Ip] = useState(() => localStorage.getItem("miner3Ip") || "192.168.1.102")
 
   const { origEach } = calcPayouts(CREW, newMembers)
   const totalDevices  = CREW.reduce((s, m) => s + m.devices, 0)
@@ -240,6 +246,15 @@ export default function App() {
     localStorage.setItem("locationSubnet", locationSubnet)
     localStorage.setItem("locationNotes", locationNotes)
   }, [locationName, locationSubnet, locationNotes])
+
+  useEffect(() => {
+    localStorage.setItem("miner1Name", miner1Name)
+    localStorage.setItem("miner1Ip", miner1Ip)
+    localStorage.setItem("miner2Name", miner2Name)
+    localStorage.setItem("miner2Ip", miner2Ip)
+    localStorage.setItem("miner3Name", miner3Name)
+    localStorage.setItem("miner3Ip", miner3Ip)
+  }, [miner1Name, miner1Ip, miner2Name, miner2Ip, miner3Name, miner3Ip])
 
   const btc        = status?.stats?.btc_price_usd || 0
   const prob30     = parseFloat(status?.stats?.block_hit_prob_30d  || 0)
@@ -930,6 +945,67 @@ export default function App() {
                     {locationNotes || "No location notes added."}
                   </div>
                 </div>
+              </div>
+
+              <div style={{
+                background: "#0d1117",
+                border: "1px solid #21262d",
+                borderRadius: 14,
+                padding: "20px 22px",
+              }}>
+                <div style={{
+                  fontSize: 10,
+                  color: "#8b949e",
+                  letterSpacing: 2,
+                  textTransform: "uppercase",
+                  marginBottom: 12
+                }}>
+                  Miner Config
+                </div>
+
+                {[
+                  [miner1Name, setMiner1Name, miner1Ip, setMiner1Ip, "Miner 1"],
+                  [miner2Name, setMiner2Name, miner2Ip, setMiner2Ip, "Miner 2"],
+                  [miner3Name, setMiner3Name, miner3Ip, setMiner3Ip, "Miner 3"]
+                ].map(([name, setName, ip, setIp, label], idx) => (
+                  <div key={idx} style={{
+                    marginBottom: idx < 2 ? 14 : 0,
+                    paddingBottom: idx < 2 ? 14 : 0,
+                    borderBottom: idx < 2 ? "1px solid #21262d" : "none"
+                  }}>
+                    <div style={{ color: "#8b949e", fontSize: 11, marginBottom: 8 }}>{label}</div>
+                    <input
+                      value={name}
+                      onChange={e => setName(e.target.value)}
+                      placeholder="Miner name"
+                      style={{
+                        width: "100%",
+                        background: "#161b22",
+                        border: "1px solid #21262d",
+                        borderRadius: 8,
+                        padding: "10px 12px",
+                        color: "#e6edf3",
+                        fontSize: 13,
+                        marginBottom: 8
+                      }}
+                    />
+                    <input
+                      value={ip}
+                      onChange={e => setIp(e.target.value)}
+                      placeholder="192.168.1.xxx"
+                      style={{
+                        width: "100%",
+                        background: "#161b22",
+                        border: "1px solid #21262d",
+                        borderRadius: 8,
+                        padding: "10px 12px",
+                        color: "#e6edf3",
+                        fontSize: 13,
+                        fontFamily: "'Space Mono', monospace"
+                      }}
+                    />
+                  </div>
+                ))}
               </div>
 
               <div style={{
