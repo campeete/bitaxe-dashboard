@@ -184,6 +184,20 @@ export default function App() {
     } catch {}
   }
 
+  async function toggleDemoMode() {
+    try {
+      const res = await fetch(`/api/demo-mode`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled: !demoMode })
+      })
+      const d = await res.json()
+      setDemoMode(!!d.demoMode)
+      fetchStatus()
+      fetchHistory()
+    } catch {}
+  }
+
   async function fetchHistory() {
     try {
       const res = await fetch(`${API}/history/all?hours=6`)
@@ -255,25 +269,40 @@ export default function App() {
             marginBottom: 32, animation: "fadeUp 0.4s ease both",
           }}>
             <div>
-              {demoMode && (
-                <div style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 8,
-                  marginBottom: 10,
-                  background: "#58a6ff18",
-                  border: "1px solid #58a6ff44",
-                  color: "#58a6ff",
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
+                {demoMode && (
+                  <div style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 8,
+                    background: "#58a6ff18",
+                    border: "1px solid #58a6ff44",
+                    color: "#58a6ff",
+                    borderRadius: 999,
+                    padding: "4px 10px",
+                    fontSize: 11,
+                    fontWeight: 700,
+                    fontFamily: "'Space Mono', monospace",
+                    letterSpacing: 1
+                  }}>
+                    DEMO MODE
+                  </div>
+                )}
+                <button onClick={toggleDemoMode} style={{
+                  background: demoMode ? "#f8514918" : "#3fb95018",
+                  border: `1px solid ${demoMode ? "#f8514944" : "#3fb95044"}`,
+                  color: demoMode ? "#f85149" : "#3fb950",
                   borderRadius: 999,
                   padding: "4px 10px",
                   fontSize: 11,
                   fontWeight: 700,
                   fontFamily: "'Space Mono', monospace",
-                  letterSpacing: 1
+                  letterSpacing: 1,
+                  cursor: "pointer"
                 }}>
-                  DEMO MODE
-                </div>
-              )}
+                  {demoMode ? "SWITCH TO LIVE" : "SWITCH TO DEMO"}
+                </button>
+              </div>
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
                 <div style={{
                   width: 38, height: 38, borderRadius: 10,
