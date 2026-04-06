@@ -163,6 +163,7 @@ export default function App() {
   const [newMembers, setNewMembers] = useState([])
   const [addCount, setAddCount] = useState(1)
   const [tab, setTab] = useState("dashboard")
+  const DEMO_MODE = true
 
   const { origEach } = calcPayouts(CREW, newMembers)
   const totalDevices  = CREW.reduce((s, m) => s + m.devices, 0)
@@ -246,6 +247,25 @@ export default function App() {
             marginBottom: 32, animation: "fadeUp 0.4s ease both",
           }}>
             <div>
+              {DEMO_MODE && (
+                <div style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  marginBottom: 10,
+                  background: "#58a6ff18",
+                  border: "1px solid #58a6ff44",
+                  color: "#58a6ff",
+                  borderRadius: 999,
+                  padding: "4px 10px",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  fontFamily: "'Space Mono', monospace",
+                  letterSpacing: 1
+                }}>
+                  DEMO MODE
+                </div>
+              )}
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
                 <div style={{
                   width: 38, height: 38, borderRadius: 10,
