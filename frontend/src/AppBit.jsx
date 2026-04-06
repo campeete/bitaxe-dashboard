@@ -168,6 +168,7 @@ export default function App() {
   const [walletLabel, setWalletLabel] = useState(() => localStorage.getItem("walletLabel") || "Main Payout Wallet")
   const [walletAddress, setWalletAddress] = useState(() => localStorage.getItem("walletAddress") || "bc1qexamplewalletaddress0000000000000000000")
   const [walletNotes, setWalletNotes] = useState(() => localStorage.getItem("walletNotes") || "Primary BTC payout destination for cluster rewards.")
+  const [showWalletAddress, setShowWalletAddress] = useState(false)
   const [locationName, setLocationName] = useState(() => localStorage.getItem("locationName") || "Home A")
   const [locationSubnet, setLocationSubnet] = useState(() => localStorage.getItem("locationSubnet") || "192.168.1.x")
   const [locationNotes, setLocationNotes] = useState(() => localStorage.getItem("locationNotes") || "Primary home network for the Bitaxe cluster.")
@@ -1119,8 +1120,25 @@ export default function App() {
                     <b>Label:</b> {walletLabel || "—"}
                   </div>
                   <div style={{ color: "#e6edf3", fontSize: 13, marginBottom: 6, wordBreak: "break-all" }}>
-                    <b>Address:</b> {walletAddress || "—"}
+                    <b>Address:</b> {walletAddress ? (showWalletAddress ? walletAddress : `${walletAddress.slice(0, 8)}••••••••••${walletAddress.slice(-6)}`) : "—"}
                   </div>
+                  <button
+                    onClick={() => setShowWalletAddress(v => !v)}
+                    style={{
+                      background: showWalletAddress ? "#f8514918" : "#58a6ff18",
+                      border: `1px solid ${showWalletAddress ? "#f8514944" : "#58a6ff44"}`,
+                      color: showWalletAddress ? "#f85149" : "#58a6ff",
+                      borderRadius: 999,
+                      padding: "6px 10px",
+                      fontSize: 11,
+                      fontWeight: 700,
+                      fontFamily: "'Space Mono', monospace",
+                      cursor: "pointer",
+                      marginBottom: 10
+                    }}
+                  >
+                    {showWalletAddress ? "HIDE ADDRESS" : "SHOW ADDRESS"}
+                  </button>
                   <div style={{ color: "#8b949e", fontSize: 12 }}>
                     {walletNotes || "No notes added."}
                   </div>
