@@ -175,6 +175,7 @@ export default function App() {
   const [settingsUnlocked, setSettingsUnlocked] = useState(() => localStorage.getItem("settingsUnlocked") === "true")
   const [settingsPin, setSettingsPin] = useState(() => localStorage.getItem("settingsPin") || "1234")
   const [pinInput, setPinInput] = useState("")
+  const [newPinInput, setNewPinInput] = useState("")
   const [savedProfiles, setSavedProfiles] = useState(() => {
     const saved = localStorage.getItem("savedProfiles")
     if (saved) {
@@ -404,6 +405,21 @@ export default function App() {
   function lockSettings() {
     setSettingsUnlocked(false)
     setToast("Settings locked")
+    setTimeout(() => setToast(""), 2200)
+  }
+
+  function changeSettingsPin() {
+    const nextPin = (newPinInput || "").trim()
+
+    if (nextPin.length < 4) {
+      setToast("PIN must be at least 4 characters")
+      setTimeout(() => setToast(""), 2200)
+      return
+    }
+
+    setSettingsPin(nextPin)
+    setNewPinInput("")
+    setToast("PIN updated")
     setTimeout(() => setToast(""), 2200)
   }
 
@@ -1429,6 +1445,44 @@ export default function App() {
                 <div style={{ color: "#8b949e", fontSize: 12, marginBottom: 12 }}>
                   Current PIN: <span style={{ fontFamily: "'Space Mono', monospace", color: "#e6edf3" }}>{settingsPin}</span>
                 </div>
+
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+                  <input
+                    type="password"
+                    inputMode="numeric"
+                    maxLength={8}
+                    value={newPinInput}
+                    onChange={e => setNewPinInput(e.target.value)}
+                    placeholder="New PIN"
+                    style={{
+                      background: "#161b22",
+                      border: "1px solid #21262d",
+                      borderRadius: 8,
+                      padding: "8px 12px",
+                      color: "#e6edf3",
+                      fontSize: 12,
+                      minWidth: 140,
+                      fontFamily: "'Space Mono', monospace"
+                    }}
+                  />
+                  <button
+                    onClick={changeSettingsPin}
+                    style={{
+                      background: "#3fb95018",
+                      border: "1px solid #3fb95044",
+                      color: "#3fb950",
+                      borderRadius: 999,
+                      padding: "8px 14px",
+                      fontSize: 11,
+                      fontWeight: 700,
+                      fontFamily: "'Space Mono', monospace",
+                      cursor: "pointer"
+                    }}
+                  >
+                    CHANGE PIN
+                  </button>
+                </div>
+
                 <button
                   onClick={lockSettings}
                   style={{
