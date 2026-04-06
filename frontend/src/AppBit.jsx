@@ -371,7 +371,12 @@ export default function App() {
 
           {/* Nav tabs */}
           <div style={{ display: "flex", gap: 4, marginBottom: 28, animation: "fadeUp 0.4s ease 0.05s both" }}>
-            {[["dashboard", "Dashboard"], ["crew", "Crew"], ["payout", "Payout Calc"]].map(([id, label]) => (
+            {[
+  ["dashboard", "Dashboard"],
+  ["crew", "Crew"],
+  ["payout", "Payout Calc"],
+  ["settings", "Settings"]
+].map(([id, label]) => (
               <button key={id} onClick={() => setTab(id)} style={{
                 background: tab === id ? "#f7931a18" : "transparent",
                 border: `1px solid ${tab === id ? "#f7931a44" : "#21262d"}`,
@@ -714,6 +719,86 @@ export default function App() {
                 </div>
               )
             })()}
+          </>}
+
+          {/* ── SETTINGS TAB ───────────────────────────────────────────── */}
+          {tab === "settings" && <>
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+              gap: 16,
+              marginBottom: 24,
+              animation: "fadeUp 0.5s ease 0.1s both",
+            }}>
+              <div style={{
+                background: "#0d1117",
+                border: "1px solid #21262d",
+                borderRadius: 14,
+                padding: "20px 22px",
+              }}>
+                <div style={{
+                  fontSize: 10,
+                  color: "#8b949e",
+                  letterSpacing: 2,
+                  textTransform: "uppercase",
+                  marginBottom: 12
+                }}>
+                  Wallet Settings
+                </div>
+                <div style={{ color: "#e6edf3", fontSize: 14, marginBottom: 8 }}>
+                  Payout wallet configuration will go here.
+                </div>
+                <div style={{ color: "#8b949e", fontSize: 12 }}>
+                  Add BTC address, wallet label, and payout notes.
+                </div>
+              </div>
+
+              <div style={{
+                background: "#0d1117",
+                border: "1px solid #21262d",
+                borderRadius: 14,
+                padding: "20px 22px",
+              }}>
+                <div style={{
+                  fontSize: 10,
+                  color: "#8b949e",
+                  letterSpacing: 2,
+                  textTransform: "uppercase",
+                  marginBottom: 12
+                }}>
+                  Location Profiles
+                </div>
+                <div style={{ color: "#e6edf3", fontSize: 14, marginBottom: 8 }}>
+                  Saved miner locations will go here.
+                </div>
+                <div style={{ color: "#8b949e", fontSize: 12 }}>
+                  Add profiles like Home A, Home B, or Temporary Site.
+                </div>
+              </div>
+
+              <div style={{
+                background: "#0d1117",
+                border: "1px solid #21262d",
+                borderRadius: 14,
+                padding: "20px 22px",
+              }}>
+                <div style={{
+                  fontSize: 10,
+                  color: "#8b949e",
+                  letterSpacing: 2,
+                  textTransform: "uppercase",
+                  marginBottom: 12
+                }}>
+                  App Controls
+                </div>
+                <div style={{ color: "#e6edf3", fontSize: 14, marginBottom: 8 }}>
+                  Demo/live controls and admin tools will go here.
+                </div>
+                <div style={{ color: "#8b949e", fontSize: 12 }}>
+                  This section will later hold security and configuration actions.
+                </div>
+              </div>
+            </div>
           </>}
 
         </div>
