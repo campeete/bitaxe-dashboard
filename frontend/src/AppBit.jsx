@@ -177,6 +177,7 @@ export default function App() {
   const [settingsPin, setSettingsPin] = useState(() => localStorage.getItem("settingsPin") || "1234")
   const [pinInput, setPinInput] = useState("")
   const [newPinInput, setNewPinInput] = useState("")
+  const importConfigRef = useRef(null)
   const [savedProfiles, setSavedProfiles] = useState(() => {
     const saved = localStorage.getItem("savedProfiles")
     if (saved) {
@@ -466,6 +467,92 @@ export default function App() {
 
     setToast(`Created profile: ${key}`)
     setTimeout(() => setToast(""), 2200)
+  }
+
+  function exportConfig() {
+    const payload = {
+      walletLabel,
+      walletAddress,
+      walletNotes,
+      locationName,
+      locationSubnet,
+      locationNotes,
+      miner1Name,
+      miner1Ip,
+      miner2Name,
+      miner2Ip,
+      miner3Name,
+      miner3Ip,
+      savedProfiles,
+      settingsPin
+    }
+
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = "bitaxe-dashboard-config.json"
+    a.click()
+    URL.revokeObjectURL(url)
+
+    setToast("Config exported")
+    setTimeout(() => setToast(""), 2200)
+  }
+
+  function importConfigFromFile(event) {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(reader.result)
+
+        setWalletLabel(data.walletLabel || "Main Payout Wallet")
+        setWalletAddress(data.walletAddress || "")
+        setWalletNotes(data.walletNotes || "")
+
+        setLocationName(data.locationName || "Home A")
+        setLocationSubnet(data.locationSubnet || "")
+        setLocationNotes(data.locationNotes || "")
+
+        setMiner1Name(data.miner1Name || "")
+        setMiner1Ip(data.miner1Ip || "")
+        setMiner2Name(data.miner2Name || "")
+        setMiner2Ip(data.miner2Ip || "")
+        setMiner3Name(data.miner3Name || "")
+        setMiner3Ip(data.miner3Ip || "")
+
+        setSavedProfiles(data.savedProfiles || {})
+        setSettingsPin(data.settingsPin || "1234")
+
+        localStorage.setItem("walletLabel", data.walletLabel || "Main Payout Wallet")
+        localStorage.setItem("walletAddress", data.walletAddress || "")
+        localStorage.setItem("walletNotes", data.walletNotes || "")
+
+        localStorage.setItem("locationName", data.locationName || "Home A")
+        localStorage.setItem("locationSubnet", data.locationSubnet || "")
+        localStorage.setItem("locationNotes", data.locationNotes || "")
+
+        localStorage.setItem("miner1Name", data.miner1Name || "")
+        localStorage.setItem("miner1Ip", data.miner1Ip || "")
+        localStorage.setItem("miner2Name", data.miner2Name || "")
+        localStorage.setItem("miner2Ip", data.miner2Ip || "")
+        localStorage.setItem("miner3Name", data.miner3Name || "")
+        localStorage.setItem("miner3Ip", data.miner3Ip || "")
+
+        localStorage.setItem("savedProfiles", JSON.stringify(data.savedProfiles || {}))
+        localStorage.setItem("settingsPin", data.settingsPin || "1234")
+
+        setToast("Config imported")
+        setTimeout(() => setToast(""), 2200)
+      } catch {
+        setToast("Invalid config file")
+        setTimeout(() => setToast(""), 2200)
+      }
+    }
+    reader.readAsText(file)
+    event.target.value = ""
   }
 
   const configuredMiners = [
@@ -1499,6 +1586,50 @@ export default function App() {
                   >
                     CHANGE PIN
                   </button>
+                </div>
+
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+                  <button
+                    onClick={exportConfig}
+                    style={{
+                      background: "#58a6ff18",
+                      border: "1px solid #58a6ff44",
+                      color: "#58a6ff",
+                      borderRadius: 999,
+                      padding: "8px 14px",
+                      fontSize: 11,
+                      fontWeight: 700,
+                      fontFamily: "'Space Mono', monospace",
+                      cursor: "pointer"
+                    }}
+                  >
+                    EXPORT CONFIG
+                  </button>
+
+                  <button
+                    onClick={() => importConfigRef.current?.click()}
+                    style={{
+                      background: "#f7931a18",
+                      border: "1px solid #f7931a44",
+                      color: "#f7931a",
+                      borderRadius: 999,
+                      padding: "8px 14px",
+                      fontSize: 11,
+                      fontWeight: 700,
+                      fontFamily: "'Space Mono', monospace",
+                      cursor: "pointer"
+                    }}
+                  >
+                    IMPORT CONFIG
+                  </button>
+
+                  <input
+                    ref={importConfigRef}
+                    type="file"
+                    accept="application/json"
+                    onChange={importConfigFromFile}
+                    style={{ display: "none" }}
+                  />
                 </div>
 
                 <button
