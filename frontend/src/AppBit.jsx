@@ -172,6 +172,9 @@ export default function App() {
   const [locationSubnet, setLocationSubnet] = useState(() => localStorage.getItem("locationSubnet") || "192.168.1.x")
   const [locationNotes, setLocationNotes] = useState(() => localStorage.getItem("locationNotes") || "Primary home network for the Bitaxe cluster.")
   const [newProfileName, setNewProfileName] = useState("")
+  const [settingsUnlocked, setSettingsUnlocked] = useState(() => localStorage.getItem("settingsUnlocked") === "true")
+  const [settingsPin, setSettingsPin] = useState(() => localStorage.getItem("settingsPin") || "1234")
+  const [pinInput, setPinInput] = useState("")
   const [savedProfiles, setSavedProfiles] = useState(() => {
     const saved = localStorage.getItem("savedProfiles")
     if (saved) {
@@ -189,6 +192,11 @@ export default function App() {
 
   const { origEach } = calcPayouts(CREW, newMembers)
   const totalDevices  = CREW.reduce((s, m) => s + m.devices, 0)
+
+  useEffect(() => {
+    localStorage.setItem("settingsUnlocked", settingsUnlocked ? "true" : "false")
+    localStorage.setItem("settingsPin", settingsPin)
+  }, [settingsUnlocked, settingsPin])
 
   async function fetchStatus() {
     try {
@@ -378,6 +386,24 @@ export default function App() {
     setSavedProfiles(updated)
     localStorage.setItem("savedProfiles", JSON.stringify(updated))
     setToast(`Deleted profile: ${profileKey}`)
+    setTimeout(() => setToast(""), 2200)
+  }
+
+  function unlockSettings() {
+    if ((pinInput || "").trim() === settingsPin) {
+      setSettingsUnlocked(true)
+      setPinInput("")
+      setToast("Settings unlocked")
+      setTimeout(() => setToast(""), 2200)
+    } else {
+      setToast("Incorrect PIN")
+      setTimeout(() => setToast(""), 2200)
+    }
+  }
+
+  function lockSettings() {
+    setSettingsUnlocked(false)
+    setToast("Settings locked")
     setTimeout(() => setToast(""), 2200)
   }
 
@@ -927,6 +953,65 @@ export default function App() {
 
           {/* ── SETTINGS TAB ───────────────────────────────────────────── */}
           {tab === "settings" && <>
+            {!settingsUnlocked ? (
+              <div style={{
+                maxWidth: 420,
+                margin: "0 auto 24px",
+                background: "#0d1117",
+                border: "1px solid #21262d",
+                borderRadius: 14,
+                padding: "22px 24px",
+                animation: "fadeUp 0.5s ease 0.1s both",
+              }}>
+                <div style={{
+                  fontSize: 10,
+                  color: "#8b949e",
+                  letterSpacing: 2,
+                  textTransform: "uppercase",
+                  marginBottom: 12
+                }}>
+                  Settings Locked
+                </div>
+                <div style={{ color: "#e6edf3", fontSize: 14, marginBottom: 12 }}>
+                  Enter your PIN to access wallet, miner, and location settings.
+                </div>
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={8}
+                  value={pinInput}
+                  onChange={e => setPinInput(e.target.value)}
+                  placeholder="Enter PIN"
+                  style={{
+                    width: "100%",
+                    background: "#161b22",
+                    border: "1px solid #21262d",
+                    borderRadius: 8,
+                    padding: "10px 12px",
+                    color: "#e6edf3",
+                    fontSize: 13,
+                    marginBottom: 12,
+                    fontFamily: "'Space Mono', monospace"
+                  }}
+                />
+                <button
+                  onClick={unlockSettings}
+                  style={{
+                    background: "#58a6ff18",
+                    border: "1px solid #58a6ff44",
+                    color: "#58a6ff",
+                    borderRadius: 999,
+                    padding: "8px 14px",
+                    fontSize: 11,
+                    fontWeight: 700,
+                    fontFamily: "'Space Mono', monospace",
+                    cursor: "pointer"
+                  }}
+                >
+                  UNLOCK SETTINGS
+                </button>
+              </div>
+            ) : (
             <div style={{
               display: "grid",
               gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
@@ -1323,7 +1408,46 @@ export default function App() {
                   This section will later hold security and configuration actions.
                 </div>
               </div>
+              <div style={{
+                background: "#0d1117",
+                border: "1px solid #21262d",
+                borderRadius: 14,
+                padding: "20px 22px",
+              }}>
+                <div style={{
+                  fontSize: 10,
+                  color: "#8b949e",
+                  letterSpacing: 2,
+                  textTransform: "uppercase",
+                  marginBottom: 12
+                }}>
+                  Security
+                </div>
+                <div style={{ color: "#e6edf3", fontSize: 14, marginBottom: 10 }}>
+                  Settings are currently unlocked on this device.
+                </div>
+                <div style={{ color: "#8b949e", fontSize: 12, marginBottom: 12 }}>
+                  Current PIN: <span style={{ fontFamily: "'Space Mono', monospace", color: "#e6edf3" }}>{settingsPin}</span>
+                </div>
+                <button
+                  onClick={lockSettings}
+                  style={{
+                    background: "#f8514918",
+                    border: "1px solid #f8514944",
+                    color: "#f85149",
+                    borderRadius: 999,
+                    padding: "8px 14px",
+                    fontSize: 11,
+                    fontWeight: 700,
+                    fontFamily: "'Space Mono', monospace",
+                    cursor: "pointer"
+                  }}
+                >
+                  LOCK SETTINGS
+                </button>
+              </div>
             </div>
+            )}
           </>}
 
         </div>
