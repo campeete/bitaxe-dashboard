@@ -164,6 +164,7 @@ export default function App() {
   const [addCount, setAddCount] = useState(1)
   const [tab, setTab] = useState("dashboard")
   const [demoMode, setDemoMode] = useState(false)
+  const [toast, setToast] = useState("")
 
   const { origEach } = calcPayouts(CREW, newMembers)
   const totalDevices  = CREW.reduce((s, m) => s + m.devices, 0)
@@ -192,10 +193,16 @@ export default function App() {
         body: JSON.stringify({ enabled: !demoMode })
       })
       const d = await res.json()
-      setDemoMode(!!d.demoMode)
+      const enabled = !!d.demoMode
+      setDemoMode(enabled)
+      setToast(enabled ? "Demo mode enabled" : "Live mode enabled")
+      setTimeout(() => setToast(""), 2200)
       fetchStatus()
       fetchHistory()
-    } catch {}
+    } catch {
+      setToast("Failed to switch mode")
+      setTimeout(() => setToast(""), 2200)
+    }
   }
 
   async function fetchHistory() {
@@ -255,6 +262,25 @@ export default function App() {
           radial-gradient(ellipse 40% 30% at 80% 80%, #58a6ff06 0%, transparent 50%)
         `,
       }}>
+        {toast && (
+          <div style={{
+            position: "fixed",
+            top: 18,
+            right: 18,
+            zIndex: 50,
+            background: "#161b22",
+            border: "1px solid #30363d",
+            color: "#e6edf3",
+            borderRadius: 10,
+            padding: "10px 14px",
+            fontSize: 12,
+            fontWeight: 700,
+            fontFamily: "'Space Mono', monospace",
+            boxShadow: "0 8px 30px rgba(0,0,0,0.35)"
+          }}>
+            {toast}
+          </div>
+        )}
         {/* Scanline overlay */}
         <div style={{
           position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0,
