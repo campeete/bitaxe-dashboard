@@ -171,6 +171,7 @@ export default function App() {
   const [locationName, setLocationName] = useState(() => localStorage.getItem("locationName") || "Home A")
   const [locationSubnet, setLocationSubnet] = useState(() => localStorage.getItem("locationSubnet") || "192.168.1.x")
   const [locationNotes, setLocationNotes] = useState(() => localStorage.getItem("locationNotes") || "Primary home network for the Bitaxe cluster.")
+  const [newProfileName, setNewProfileName] = useState("")
   const [savedProfiles, setSavedProfiles] = useState(() => {
     const saved = localStorage.getItem("savedProfiles")
     if (saved) {
@@ -377,6 +378,50 @@ export default function App() {
     setSavedProfiles(updated)
     localStorage.setItem("savedProfiles", JSON.stringify(updated))
     setToast(`Deleted profile: ${profileKey}`)
+    setTimeout(() => setToast(""), 2200)
+  }
+
+  function createNewProfile() {
+    const key = (newProfileName || "").trim()
+    if (!key) {
+      setToast("Enter a new profile name")
+      setTimeout(() => setToast(""), 2200)
+      return
+    }
+
+    if (savedProfiles[key]) {
+      setToast("Profile already exists")
+      setTimeout(() => setToast(""), 2200)
+      return
+    }
+
+    const newProfile = {
+      locationName: key,
+      locationSubnet: "",
+      locationNotes: "",
+      miners: [
+        { name: "", ip: "" },
+        { name: "", ip: "" },
+        { name: "", ip: "" }
+      ]
+    }
+
+    const updated = { ...savedProfiles, [key]: newProfile }
+    setSavedProfiles(updated)
+    localStorage.setItem("savedProfiles", JSON.stringify(updated))
+
+    setLocationName(newProfile.locationName)
+    setLocationSubnet(newProfile.locationSubnet)
+    setLocationNotes(newProfile.locationNotes)
+    setMiner1Name("")
+    setMiner1Ip("")
+    setMiner2Name("")
+    setMiner2Ip("")
+    setMiner3Name("")
+    setMiner3Ip("")
+    setNewProfileName("")
+
+    setToast(`Created profile: ${key}`)
     setTimeout(() => setToast(""), 2200)
   }
 
@@ -995,6 +1040,39 @@ export default function App() {
                   marginBottom: 12
                 }}>
                   Location Profiles
+                </div>
+
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
+                  <input
+                    value={newProfileName}
+                    onChange={e => setNewProfileName(e.target.value)}
+                    placeholder="New profile name"
+                    style={{
+                      background: "#161b22",
+                      border: "1px solid #21262d",
+                      borderRadius: 8,
+                      padding: "8px 12px",
+                      color: "#e6edf3",
+                      fontSize: 12,
+                      minWidth: 180
+                    }}
+                  />
+                  <button
+                    onClick={createNewProfile}
+                    style={{
+                      background: "#f7931a18",
+                      border: "1px solid #f7931a44",
+                      color: "#f7931a",
+                      borderRadius: 999,
+                      padding: "6px 12px",
+                      fontSize: 11,
+                      fontWeight: 700,
+                      fontFamily: "'Space Mono', monospace",
+                      cursor: "pointer"
+                    }}
+                  >
+                    CREATE NEW PROFILE
+                  </button>
                 </div>
 
                 <button
