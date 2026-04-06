@@ -165,9 +165,9 @@ export default function App() {
   const [tab, setTab] = useState("dashboard")
   const [demoMode, setDemoMode] = useState(false)
   const [toast, setToast] = useState("")
-  const [walletLabel, setWalletLabel] = useState("Main Payout Wallet")
-  const [walletAddress, setWalletAddress] = useState("bc1qexamplewalletaddress0000000000000000000")
-  const [walletNotes, setWalletNotes] = useState("Primary BTC payout destination for cluster rewards.")
+  const [walletLabel, setWalletLabel] = useState(() => localStorage.getItem("walletLabel") || "Main Payout Wallet")
+  const [walletAddress, setWalletAddress] = useState(() => localStorage.getItem("walletAddress") || "bc1qexamplewalletaddress0000000000000000000")
+  const [walletNotes, setWalletNotes] = useState(() => localStorage.getItem("walletNotes") || "Primary BTC payout destination for cluster rewards.")
 
   const { origEach } = calcPayouts(CREW, newMembers)
   const totalDevices  = CREW.reduce((s, m) => s + m.devices, 0)
@@ -225,6 +225,12 @@ export default function App() {
     const hi = setInterval(fetchHistory, 60000)
     return () => { clearInterval(si); clearInterval(hi) }
   }, [])
+
+  useEffect(() => {
+    localStorage.setItem("walletLabel", walletLabel)
+    localStorage.setItem("walletAddress", walletAddress)
+    localStorage.setItem("walletNotes", walletNotes)
+  }, [walletLabel, walletAddress, walletNotes])
 
   const btc        = status?.stats?.btc_price_usd || 0
   const prob30     = parseFloat(status?.stats?.block_hit_prob_30d  || 0)
