@@ -171,6 +171,7 @@ export default function App() {
   const [locationName, setLocationName] = useState(() => localStorage.getItem("locationName") || "Home A")
   const [locationSubnet, setLocationSubnet] = useState(() => localStorage.getItem("locationSubnet") || "192.168.1.x")
   const [locationNotes, setLocationNotes] = useState(() => localStorage.getItem("locationNotes") || "Primary home network for the Bitaxe cluster.")
+  const [activeProfile, setActiveProfile] = useState(() => localStorage.getItem("activeProfile") || "Home A")
   const [miner1Name, setMiner1Name] = useState(() => localStorage.getItem("miner1Name") || "Carbon-01")
   const [miner1Ip, setMiner1Ip] = useState(() => localStorage.getItem("miner1Ip") || "192.168.1.100")
   const [miner2Name, setMiner2Name] = useState(() => localStorage.getItem("miner2Name") || "Neon-01")
@@ -245,7 +246,8 @@ export default function App() {
     localStorage.setItem("locationName", locationName)
     localStorage.setItem("locationSubnet", locationSubnet)
     localStorage.setItem("locationNotes", locationNotes)
-  }, [locationName, locationSubnet, locationNotes])
+    localStorage.setItem("activeProfile", activeProfile)
+  }, [locationName, locationSubnet, locationNotes, activeProfile])
 
   useEffect(() => {
     localStorage.setItem("miner1Name", miner1Name)
@@ -265,6 +267,59 @@ export default function App() {
   const dailyUSD   = dailyBTC * btc
   const online     = status?.cluster?.onlineCount || 0
   const total      = status?.cluster?.totalMiners  || 3
+
+  const locationProfiles = {
+    "Home A": {
+      locationName: "Home A",
+      locationSubnet: "192.168.1.x",
+      locationNotes: "Primary home network for the Bitaxe cluster.",
+      miners: [
+        { name: "Carbon-01", ip: "192.168.1.100" },
+        { name: "Neon-01", ip: "192.168.1.101" },
+        { name: "Argon-01", ip: "192.168.1.102" }
+      ]
+    },
+    "Home B": {
+      locationName: "Home B",
+      locationSubnet: "192.168.0.x",
+      locationNotes: "Secondary house setup with a different subnet.",
+      miners: [
+        { name: "Carbon-01", ip: "192.168.0.110" },
+        { name: "Neon-01", ip: "192.168.0.111" },
+        { name: "Argon-01", ip: "192.168.0.112" }
+      ]
+    },
+    "Temporary Site": {
+      locationName: "Temporary Site",
+      locationSubnet: "10.0.0.x",
+      locationNotes: "Portable deployment profile for short-term relocation.",
+      miners: [
+        { name: "Carbon-Portable", ip: "10.0.0.20" },
+        { name: "Neon-Portable", ip: "10.0.0.21" },
+        { name: "Argon-Portable", ip: "10.0.0.22" }
+      ]
+    }
+  }
+
+  function applyLocationProfile(profileKey) {
+    const profile = locationProfiles[profileKey]
+    if (!profile) return
+
+    setActiveProfile(profileKey)
+    setLocationName(profile.locationName)
+    setLocationSubnet(profile.locationSubnet)
+    setLocationNotes(profile.locationNotes)
+
+    setMiner1Name(profile.miners[0].name)
+    setMiner1Ip(profile.miners[0].ip)
+    setMiner2Name(profile.miners[1].name)
+    setMiner2Ip(profile.miners[1].ip)
+    setMiner3Name(profile.miners[2].name)
+    setMiner3Ip(profile.miners[2].ip)
+
+    setToast(`Loaded profile: ${profileKey}`)
+    setTimeout(() => setToast(""), 2200)
+  }
 
   const configuredMiners = [
     { miner_name: miner1Name, miner_ip: miner1Ip },
@@ -881,6 +936,28 @@ export default function App() {
                   marginBottom: 12
                 }}>
                   Location Profiles
+                </div>
+
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
+                  {Object.keys(locationProfiles).map(profile => (
+                    <button
+                      key={profile}
+                      onClick={() => applyLocationProfile(profile)}
+                      style={{
+                        background: activeProfile === profile ? "#58a6ff18" : "#161b22",
+                        border: `1px solid ${activeProfile === profile ? "#58a6ff44" : "#21262d"}`,
+                        color: activeProfile === profile ? "#58a6ff" : "#e6edf3",
+                        borderRadius: 999,
+                        padding: "6px 12px",
+                        fontSize: 11,
+                        fontWeight: 700,
+                        fontFamily: "'Space Mono', monospace",
+                        cursor: "pointer"
+                      }}
+                    >
+                      {profile}
+                    </button>
+                  ))}
                 </div>
 
                 <div style={{ marginBottom: 12 }}>
