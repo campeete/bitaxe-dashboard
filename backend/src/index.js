@@ -13,6 +13,15 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
+// ── GET / ────────────────────────────────────────────────────────────────────
+app.get('/', (req, res) => {
+  res.json({
+    ok: true,
+    message: 'Bitaxe Dashboard Backend is running',
+    endpoints: ['/api/status', '/api/history/all?hours=6', '/api/earnings']
+  });
+});
+
 // ── GET /api/status ──────────────────────────────────────────────────────────
 // Latest snapshot for every miner + cluster totals
 app.get('/api/status', async (req, res) => {
