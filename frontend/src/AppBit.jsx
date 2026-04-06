@@ -266,6 +266,18 @@ export default function App() {
   const online     = status?.cluster?.onlineCount || 0
   const total      = status?.cluster?.totalMiners  || 3
 
+  const configuredMiners = [
+    { miner_name: miner1Name, miner_ip: miner1Ip },
+    { miner_name: miner2Name, miner_ip: miner2Ip },
+    { miner_name: miner3Name, miner_ip: miner3Ip },
+  ]
+
+  const displayedMiners = (status?.miners || []).map((m, i) => ({
+    ...m,
+    miner_name: configuredMiners[i]?.miner_name || m.miner_name || m.miner_ip,
+    miner_ip: configuredMiners[i]?.miner_ip || m.miner_ip
+  }))
+
   return (
     <>
       <style>{`
@@ -583,7 +595,7 @@ export default function App() {
               <div style={{ fontSize: 10, color: "#8b949e", letterSpacing: 2, textTransform: "uppercase", marginBottom: 12 }}>
                 Individual Miners
               </div>
-              {status?.miners?.map((m, i) => (
+              {displayedMiners.map((m, i) => (
                 <div key={m.miner_ip} style={{
                   background: "#0d1117", border: `1px solid ${m.is_online ? "#21262d" : "#f8514922"}`,
                   borderRadius: 12, padding: "13px 18px", marginBottom: 8,
