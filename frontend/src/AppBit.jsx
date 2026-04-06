@@ -10,7 +10,7 @@ const CREW = [
 
 const BLOCK_REWARD_USD = 300000
 const TAX_RATE = 0.20
-const API = "/api"
+const DEFAULT_API = `${window.location.protocol}//${window.location.hostname}:3001/api`
 
 // ── Utility ───────────────────────────────────────────────────────────────────
 function calcPayouts(crew, newMembers = []) {
@@ -176,6 +176,9 @@ export default function App() {
   const [settingsUnlocked, setSettingsUnlocked] = useState(() => localStorage.getItem("settingsUnlocked") === "true")
   const [settingsPin, setSettingsPin] = useState(() => localStorage.getItem("settingsPin") || "1234")
   const [pinInput, setPinInput] = useState("")
+  const [apiBaseUrl, setApiBaseUrl] = useState(
+    () => localStorage.getItem("apiBaseUrl") || `${window.location.protocol}//${window.location.hostname}:3001/api`
+  )
   const [newPinInput, setNewPinInput] = useState("")
   const importConfigRef = useRef(null)
   const [savedProfiles, setSavedProfiles] = useState(() => {
@@ -201,9 +204,13 @@ export default function App() {
     localStorage.setItem("settingsPin", settingsPin)
   }, [settingsUnlocked, settingsPin])
 
+  useEffect(() => {
+    localStorage.setItem("apiBaseUrl", apiBaseUrl)
+  }, [apiBaseUrl])
+
   async function fetchStatus() {
     try {
-      const res = await fetch(`${API}/status`)
+      const res = await fetch(`${apiBaseUrl}/status`)
       const d   = await res.json()
       setStatus(d); setLastPoll(new Date())
     } catch {}
@@ -239,7 +246,7 @@ export default function App() {
 
   async function fetchHistory() {
     try {
-      const res = await fetch(`${API}/history/all?hours=6`)
+      const res = await fetch(`${apiBaseUrl}/history/all?hours=6`)
       const d   = await res.json()
       setHistory(d.map(r => ({
         time: new Date(r.bucket).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
@@ -1586,6 +1593,26 @@ export default function App() {
                   >
                     CHANGE PIN
                   </button>
+                </div>
+
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ color: "#8b949e", fontSize: 11, marginBottom: 6 }}>API Base URL</div>
+                  <input
+                    value={apiBaseUrl}
+                    onChange={e => setApiBaseUrl(e.target.value)}
+                    placeholder={DEFAULT_API}
+                    style={{
+                      width: "100%",
+                      background: "#161b22",
+                      border: "1px solid #21262d",
+                      borderRadius: 8,
+                      padding: "10px 12px",
+                      color: "#e6edf3",
+                      fontSize: 12,
+                      fontFamily: "'Space Mono', monospace",
+                      marginBottom: 10
+                    }}
+                  />
                 </div>
 
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
