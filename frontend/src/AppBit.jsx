@@ -163,7 +163,7 @@ export default function App() {
   const [newMembers, setNewMembers] = useState([])
   const [addCount, setAddCount] = useState(1)
   const [tab, setTab] = useState("dashboard")
-  const DEMO_MODE = true
+  const [demoMode, setDemoMode] = useState(false)
 
   const { origEach } = calcPayouts(CREW, newMembers)
   const totalDevices  = CREW.reduce((s, m) => s + m.devices, 0)
@@ -173,6 +173,14 @@ export default function App() {
       const res = await fetch(`${API}/status`)
       const d   = await res.json()
       setStatus(d); setLastPoll(new Date())
+    } catch {}
+  }
+
+  async function fetchRootInfo() {
+    try {
+      const res = await fetch(`/`)
+      const d = await res.json()
+      setDemoMode(!!d.demoMode)
     } catch {}
   }
 
@@ -188,7 +196,7 @@ export default function App() {
   }
 
   useEffect(() => {
-    fetchStatus(); fetchHistory()
+    fetchStatus(); fetchHistory(); fetchRootInfo()
     const si = setInterval(fetchStatus, 30000)
     const hi = setInterval(fetchHistory, 60000)
     return () => { clearInterval(si); clearInterval(hi) }
@@ -247,7 +255,7 @@ export default function App() {
             marginBottom: 32, animation: "fadeUp 0.4s ease both",
           }}>
             <div>
-              {DEMO_MODE && (
+              {demoMode && (
                 <div style={{
                   display: "inline-flex",
                   alignItems: "center",

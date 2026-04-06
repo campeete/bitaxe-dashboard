@@ -115,6 +115,7 @@ app.get('/', (req, res) => {
   res.json({
     ok: true,
     message: 'Bitaxe Dashboard Backend is running',
+    demoMode: DEMO_MODE,
     endpoints: ['/api/status', '/api/history/all?hours=6', '/api/earnings']
   });
 });
