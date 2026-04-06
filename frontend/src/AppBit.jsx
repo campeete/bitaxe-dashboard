@@ -179,6 +179,7 @@ export default function App() {
   const [apiBaseUrl, setApiBaseUrl] = useState(
     () => localStorage.getItem("apiBaseUrl") || `${window.location.protocol}//${window.location.hostname}:3001/api`
   )
+  const [backendOnline, setBackendOnline] = useState(false)
   const [newPinInput, setNewPinInput] = useState("")
   const importConfigRef = useRef(null)
   const [savedProfiles, setSavedProfiles] = useState(() => {
@@ -212,8 +213,10 @@ export default function App() {
     try {
       const res = await fetch(`${apiBaseUrl}/status`)
       const d   = await res.json()
-      setStatus(d); setLastPoll(new Date())
-    } catch {}
+      setStatus(d); setLastPoll(new Date()); setBackendOnline(true)
+    } catch {
+      setBackendOnline(false)
+    }
   }
 
   async function fetchRootInfo() {
@@ -706,6 +709,21 @@ export default function App() {
               <div style={{ fontSize: 11, color: "#8b949e", marginTop: 6 }}>
                 {lastPoll ? `synced ${lastPoll.toLocaleTimeString()}` : "connecting..."}
                 {btc > 0 && <span style={{ color: "#f7931a", marginLeft: 8 }}>₿ ${btc.toLocaleString()}</span>}
+                <span style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  marginLeft: 8,
+                  color: backendOnline ? "#3fb950" : "#f85149"
+                }}>
+                  <span style={{
+                    width: 7,
+                    height: 7,
+                    borderRadius: "50%",
+                    background: backendOnline ? "#3fb950" : "#f85149"
+                  }} />
+                  {backendOnline ? "backend online" : "backend offline"}
+                </span>
               </div>
             </div>
           </div>
