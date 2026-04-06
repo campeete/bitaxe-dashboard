@@ -359,6 +359,69 @@ export default function App() {
               ))}
             </div>
 
+            {/* System status */}
+            <div style={{
+              background: "#0d1117", border: "1px solid #21262d", borderRadius: 14,
+              padding: "18px 20px", marginBottom: 24,
+              animation: "fadeUp 0.5s ease 0.28s both",
+            }}>
+              <div style={{ fontSize: 10, color: "#8b949e", letterSpacing: 2, textTransform: "uppercase", marginBottom: 14 }}>
+                System Status
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
+                <div style={{
+                  background: "#161b22", border: "1px solid #21262d", borderRadius: 10,
+                  padding: "12px 14px"
+                }}>
+                  <div style={{ fontSize: 10, color: "#8b949e", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>
+                    Backend
+                  </div>
+                  <div style={{ color: "#3fb950", fontFamily: "'Space Mono', monospace", fontWeight: 700, fontSize: 16 }}>
+                    ONLINE
+                  </div>
+                </div>
+
+                <div style={{
+                  background: "#161b22", border: "1px solid #21262d", borderRadius: 10,
+                  padding: "12px 14px"
+                }}>
+                  <div style={{ fontSize: 10, color: "#8b949e", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>
+                    Data Mode
+                  </div>
+                  <div style={{
+                    color: demoMode ? "#58a6ff" : "#f7931a",
+                    fontFamily: "'Space Mono', monospace", fontWeight: 700, fontSize: 16
+                  }}>
+                    {demoMode ? "DEMO" : "LIVE"}
+                  </div>
+                </div>
+
+                <div style={{
+                  background: "#161b22", border: "1px solid #21262d", borderRadius: 10,
+                  padding: "12px 14px"
+                }}>
+                  <div style={{ fontSize: 10, color: "#8b949e", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>
+                    Last Sync
+                  </div>
+                  <div style={{ color: "#e6edf3", fontFamily: "'Space Mono', monospace", fontWeight: 700, fontSize: 16 }}>
+                    {lastPoll ? lastPoll.toLocaleTimeString() : "—"}
+                  </div>
+                </div>
+
+                <div style={{
+                  background: "#161b22", border: "1px solid #21262d", borderRadius: 10,
+                  padding: "12px 14px"
+                }}>
+                  <div style={{ fontSize: 10, color: "#8b949e", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>
+                    API
+                  </div>
+                  <div style={{ color: "#e6edf3", fontFamily: "'Space Mono', monospace", fontWeight: 700, fontSize: 16 }}>
+                    /api
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Probability arcs */}
             <div style={{
               background: "#0d1117", border: "1px solid #21262d", borderRadius: 14,
