@@ -165,6 +165,9 @@ export default function App() {
   const [tab, setTab] = useState("dashboard")
   const [demoMode, setDemoMode] = useState(false)
   const [toast, setToast] = useState("")
+  const [walletLabel, setWalletLabel] = useState("Main Payout Wallet")
+  const [walletAddress, setWalletAddress] = useState("bc1qexamplewalletaddress0000000000000000000")
+  const [walletNotes, setWalletNotes] = useState("Primary BTC payout destination for cluster rewards.")
 
   const { origEach } = calcPayouts(CREW, newMembers)
   const totalDevices  = CREW.reduce((s, m) => s + m.devices, 0)
@@ -745,11 +748,80 @@ export default function App() {
                 }}>
                   Wallet Settings
                 </div>
-                <div style={{ color: "#e6edf3", fontSize: 14, marginBottom: 8 }}>
-                  Payout wallet configuration will go here.
+
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ color: "#8b949e", fontSize: 11, marginBottom: 6 }}>Wallet Label</div>
+                  <input
+                    value={walletLabel}
+                    onChange={e => setWalletLabel(e.target.value)}
+                    style={{
+                      width: "100%",
+                      background: "#161b22",
+                      border: "1px solid #21262d",
+                      borderRadius: 8,
+                      padding: "10px 12px",
+                      color: "#e6edf3",
+                      fontSize: 13
+                    }}
+                  />
                 </div>
-                <div style={{ color: "#8b949e", fontSize: 12 }}>
-                  Add BTC address, wallet label, and payout notes.
+
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ color: "#8b949e", fontSize: 11, marginBottom: 6 }}>BTC Address</div>
+                  <input
+                    value={walletAddress}
+                    onChange={e => setWalletAddress(e.target.value)}
+                    style={{
+                      width: "100%",
+                      background: "#161b22",
+                      border: "1px solid #21262d",
+                      borderRadius: 8,
+                      padding: "10px 12px",
+                      color: "#e6edf3",
+                      fontSize: 13,
+                      fontFamily: "'Space Mono', monospace"
+                    }}
+                  />
+                </div>
+
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ color: "#8b949e", fontSize: 11, marginBottom: 6 }}>Notes</div>
+                  <textarea
+                    value={walletNotes}
+                    onChange={e => setWalletNotes(e.target.value)}
+                    rows={4}
+                    style={{
+                      width: "100%",
+                      background: "#161b22",
+                      border: "1px solid #21262d",
+                      borderRadius: 8,
+                      padding: "10px 12px",
+                      color: "#e6edf3",
+                      fontSize: 13,
+                      resize: "vertical"
+                    }}
+                  />
+                </div>
+
+                <div style={{
+                  marginTop: 14,
+                  padding: "12px 14px",
+                  background: "#161b22",
+                  border: "1px solid #21262d",
+                  borderRadius: 10
+                }}>
+                  <div style={{ color: "#8b949e", fontSize: 10, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>
+                    Preview
+                  </div>
+                  <div style={{ color: "#e6edf3", fontSize: 13, marginBottom: 6 }}>
+                    <b>Label:</b> {walletLabel || "—"}
+                  </div>
+                  <div style={{ color: "#e6edf3", fontSize: 13, marginBottom: 6, wordBreak: "break-all" }}>
+                    <b>Address:</b> {walletAddress || "—"}
+                  </div>
+                  <div style={{ color: "#8b949e", fontSize: 12 }}>
+                    {walletNotes || "No notes added."}
+                  </div>
                 </div>
               </div>
 
