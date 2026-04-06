@@ -171,6 +171,13 @@ export default function App() {
   const [locationName, setLocationName] = useState(() => localStorage.getItem("locationName") || "Home A")
   const [locationSubnet, setLocationSubnet] = useState(() => localStorage.getItem("locationSubnet") || "192.168.1.x")
   const [locationNotes, setLocationNotes] = useState(() => localStorage.getItem("locationNotes") || "Primary home network for the Bitaxe cluster.")
+  const [savedProfiles, setSavedProfiles] = useState(() => {
+    const saved = localStorage.getItem("savedProfiles")
+    if (saved) {
+      try { return JSON.parse(saved) } catch {}
+    }
+    return {}
+  })
   const [activeProfile, setActiveProfile] = useState(() => localStorage.getItem("activeProfile") || "Home A")
   const [miner1Name, setMiner1Name] = useState(() => localStorage.getItem("miner1Name") || "Carbon-01")
   const [miner1Ip, setMiner1Ip] = useState(() => localStorage.getItem("miner1Ip") || "192.168.1.100")
@@ -318,6 +325,58 @@ export default function App() {
     setMiner3Ip(profile.miners[2].ip)
 
     setToast(`Loaded profile: ${profileKey}`)
+    setTimeout(() => setToast(""), 2200)
+  }
+
+  function saveCurrentProfile() {
+    const key = locationName || "Unnamed Profile"
+
+    const updatedProfiles = {
+      ...savedProfiles,
+      [key]: {
+        locationName,
+        locationSubnet,
+        locationNotes,
+        miners: [
+          { name: miner1Name, ip: miner1Ip },
+          { name: miner2Name, ip: miner2Ip },
+          { name: miner3Name, ip: miner3Ip }
+        ]
+      }
+    }
+
+    setSavedProfiles(updatedProfiles)
+    localStorage.setItem("savedProfiles", JSON.stringify(updatedProfiles))
+
+    setToast(`Saved profile: ${key}`)
+    setTimeout(() => setToast(""), 2200)
+  }
+
+  function loadSavedProfile(profileKey) {
+    const profile = savedProfiles[profileKey]
+    if (!profile) return
+
+    setLocationName(profile.locationName || "")
+    setLocationSubnet(profile.locationSubnet || "")
+    setLocationNotes(profile.locationNotes || "")
+
+    setMiner1Name(profile.miners?.[0]?.name || "")
+    setMiner1Ip(profile.miners?.[0]?.ip || "")
+    setMiner2Name(profile.miners?.[1]?.name || "")
+    setMiner2Ip(profile.miners?.[1]?.ip || "")
+    setMiner3Name(profile.miners?.[2]?.name || "")
+    setMiner3Ip(profile.miners?.[2]?.ip || "")
+
+    setToast(`Loaded profile: ${profileKey}`)
+    setTimeout(() => setToast(""), 2200)
+  }
+
+  function deleteSavedProfile(profileKey) {
+    const updated = { ...savedProfiles }
+    delete updated[profileKey]
+    setSavedProfiles(updated)
+    localStorage.setItem("savedProfiles", JSON.stringify(updated))
+    setToast(`Deleted profile: ${profileKey}`)
     setTimeout(() => setToast(""), 2200)
   }
 
@@ -938,6 +997,24 @@ export default function App() {
                   Location Profiles
                 </div>
 
+                <button
+                  onClick={saveCurrentProfile}
+                  style={{
+                    background: "#3fb95018",
+                    border: "1px solid #3fb95044",
+                    color: "#3fb950",
+                    borderRadius: 999,
+                    padding: "6px 12px",
+                    fontSize: 11,
+                    fontWeight: 700,
+                    fontFamily: "'Space Mono', monospace",
+                    cursor: "pointer",
+                    marginBottom: 14
+                  }}
+                >
+                  SAVE CURRENT PROFILE
+                </button>
+
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
                   {Object.keys(locationProfiles).map(profile => (
                     <button
@@ -1030,8 +1107,57 @@ export default function App() {
                   <div style={{ color: "#e6edf3", fontSize: 13, marginBottom: 6 }}>
                     <b>Subnet:</b> {locationSubnet || "—"}
                   </div>
-                  <div style={{ color: "#8b949e", fontSize: 12 }}>
+                  <div style={{ color: "#8b949e", fontSize: 12, marginBottom: 10 }}>
                     {locationNotes || "No location notes added."}
+                  </div>
+
+                  <div style={{ color: "#8b949e", fontSize: 10, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>
+                    Saved Profiles
+                  </div>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    {savedProfiles && Object.keys(savedProfiles).length > 0 ? (
+                      Object.keys(savedProfiles).map(profile => (
+                        <div
+                          key={profile}
+                          style={{ display: "inline-flex", gap: 6, alignItems: "center" }}
+                        >
+                          <button
+                            onClick={() => loadSavedProfile(profile)}
+                            style={{
+                              background: "#58a6ff18",
+                              border: "1px solid #58a6ff44",
+                              color: "#58a6ff",
+                              borderRadius: 999,
+                              padding: "4px 10px",
+                              fontSize: 11,
+                              fontWeight: 700,
+                              fontFamily: "'Space Mono', monospace",
+                              cursor: "pointer"
+                            }}
+                          >
+                            LOAD {profile}
+                          </button>
+                          <button
+                            onClick={() => deleteSavedProfile(profile)}
+                            style={{
+                              background: "#f8514918",
+                              border: "1px solid #f8514944",
+                              color: "#f85149",
+                              borderRadius: 999,
+                              padding: "4px 10px",
+                              fontSize: 11,
+                              fontWeight: 700,
+                              fontFamily: "'Space Mono', monospace",
+                              cursor: "pointer"
+                            }}
+                          >
+                            DELETE
+                          </button>
+                        </div>
+                      ))
+                    ) : (
+                      <span style={{ color: "#8b949e", fontSize: 12 }}>No saved profiles yet.</span>
+                    )}
                   </div>
                 </div>
               </div>
