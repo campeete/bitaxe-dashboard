@@ -296,6 +296,10 @@ export default function App() {
   const dailyUSD   = dailyBTC * btc
   const online     = status?.cluster?.onlineCount || 0
   const total      = status?.cluster?.totalMiners  || 3
+  const hostName = window.location.hostname
+  const hostPort = window.location.port || "5173"
+  const frontendUrl = `${window.location.protocol}//${hostName}${window.location.port ? `:${hostPort}` : ""}/`
+  const backendRootUrl = `${window.location.protocol}//${hostName}:3001/`
 
   const locationProfiles = {
     "Home A": {
@@ -563,6 +567,17 @@ export default function App() {
     }
     reader.readAsText(file)
     event.target.value = ""
+  }
+
+  async function copyText(value, label) {
+    try {
+      await navigator.clipboard.writeText(value)
+      setToast(`${label} copied`)
+      setTimeout(() => setToast(""), 2200)
+    } catch {
+      setToast(`Failed to copy ${label.toLowerCase()}`)
+      setTimeout(() => setToast(""), 2200)
+    }
   }
 
   const configuredMiners = [
@@ -836,6 +851,98 @@ export default function App() {
                   </div>
                   <div style={{ color: "#e6edf3", fontFamily: "'Space Mono', monospace", fontWeight: 700, fontSize: 16 }}>
                     /api
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Share / Access */}
+            <div style={{
+              background: "#0d1117", border: "1px solid #21262d", borderRadius: 14,
+              padding: "18px 20px", marginBottom: 24,
+              animation: "fadeUp 0.5s ease 0.29s both",
+            }}>
+              <div style={{ fontSize: 10, color: "#8b949e", letterSpacing: 2, textTransform: "uppercase", marginBottom: 14 }}>
+                Share / Access
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+                <div style={{
+                  background: "#161b22", border: "1px solid #21262d", borderRadius: 10,
+                  padding: "12px 14px"
+                }}>
+                  <div style={{ fontSize: 10, color: "#8b949e", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>
+                    Frontend URL
+                  </div>
+                  <div style={{ color: "#e6edf3", fontFamily: "'Space Mono', monospace", fontSize: 12, wordBreak: "break-all", marginBottom: 10 }}>
+                    {frontendUrl}
+                  </div>
+                  <button
+                    onClick={() => copyText(frontendUrl, "Frontend URL")}
+                    style={{
+                      background: "#58a6ff18",
+                      border: "1px solid #58a6ff44",
+                      color: "#58a6ff",
+                      borderRadius: 999,
+                      padding: "6px 12px",
+                      fontSize: 11,
+                      fontWeight: 700,
+                      fontFamily: "'Space Mono', monospace",
+                      cursor: "pointer"
+                    }}
+                  >
+                    COPY FRONTEND URL
+                  </button>
+                </div>
+
+                <div style={{
+                  background: "#161b22", border: "1px solid #21262d", borderRadius: 10,
+                  padding: "12px 14px"
+                }}>
+                  <div style={{ fontSize: 10, color: "#8b949e", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>
+                    Backend URL
+                  </div>
+                  <div style={{ color: "#e6edf3", fontFamily: "'Space Mono', monospace", fontSize: 12, wordBreak: "break-all", marginBottom: 10 }}>
+                    {backendRootUrl}
+                  </div>
+                  <button
+                    onClick={() => copyText(backendRootUrl, "Backend URL")}
+                    style={{
+                      background: "#f7931a18",
+                      border: "1px solid #f7931a44",
+                      color: "#f7931a",
+                      borderRadius: 999,
+                      padding: "6px 12px",
+                      fontSize: 11,
+                      fontWeight: 700,
+                      fontFamily: "'Space Mono', monospace",
+                      cursor: "pointer"
+                    }}
+                  >
+                    COPY BACKEND URL
+                  </button>
+                </div>
+
+                <div style={{
+                  background: "#161b22", border: "1px solid #21262d", borderRadius: 10,
+                  padding: "12px 14px"
+                }}>
+                  <div style={{ fontSize: 10, color: "#8b949e", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>
+                    Device Host
+                  </div>
+                  <div style={{ color: "#e6edf3", fontFamily: "'Space Mono', monospace", fontSize: 12 }}>
+                    {hostName}
+                  </div>
+                </div>
+
+                <div style={{
+                  background: "#161b22", border: "1px solid #21262d", borderRadius: 10,
+                  padding: "12px 14px"
+                }}>
+                  <div style={{ fontSize: 10, color: "#8b949e", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>
+                    Quick Tip
+                  </div>
+                  <div style={{ color: "#8b949e", fontSize: 12, lineHeight: 1.5 }}>
+                    Open the frontend URL on a phone connected to the same Wi-Fi network.
                   </div>
                 </div>
               </div>
