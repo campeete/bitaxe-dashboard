@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react"
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Area, AreaChart } from "recharts"
+import { QRCodeSVG } from "qrcode.react"
 
 // ── Crew config ───────────────────────────────────────────────────────────────
 const CREW = [
@@ -943,6 +944,56 @@ export default function App() {
                   </div>
                   <div style={{ color: "#8b949e", fontSize: 12, lineHeight: 1.5 }}>
                     Open the frontend URL on a phone connected to the same Wi-Fi network.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* QR Access */}
+            <div style={{
+              background: "#0d1117", border: "1px solid #21262d", borderRadius: 14,
+              padding: "18px 20px", marginBottom: 24,
+              animation: "fadeUp 0.5s ease 0.295s both",
+            }}>
+              <div style={{ fontSize: 10, color: "#8b949e", letterSpacing: 2, textTransform: "uppercase", marginBottom: 14 }}>
+                QR Access
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16, alignItems: "center" }}>
+                <div style={{
+                  background: "#161b22",
+                  border: "1px solid #21262d",
+                  borderRadius: 12,
+                  padding: "16px",
+                  display: "flex",
+                  justifyContent: "center"
+                }}>
+                  <QRCodeSVG
+                    value={frontendUrl}
+                    size={180}
+                    bgColor="#ffffff"
+                    fgColor="#000000"
+                    includeMargin={true}
+                  />
+                </div>
+                <div>
+                  <div style={{ color: "#e6edf3", fontSize: 14, marginBottom: 10 }}>
+                    Scan this with a phone on the same Wi-Fi to open the dashboard.
+                  </div>
+                  <div style={{
+                    color: "#8b949e",
+                    fontSize: 12,
+                    lineHeight: 1.6,
+                    marginBottom: 10
+                  }}>
+                    Best for quick setup when sharing the app locally without typing the full address.
+                  </div>
+                  <div style={{
+                    color: "#e6edf3",
+                    fontFamily: "'Space Mono', monospace",
+                    fontSize: 12,
+                    wordBreak: "break-all"
+                  }}>
+                    {frontendUrl}
                   </div>
                 </div>
               </div>
