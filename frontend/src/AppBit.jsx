@@ -181,6 +181,7 @@ export default function App() {
     () => localStorage.getItem("apiBaseUrl") || "https://bitaxe-dashboard.onrender.com/api"
   )
   const [backendOnline, setBackendOnline] = useState(false)
+  const isMobile = window.innerWidth <= 768
   const [newPinInput, setNewPinInput] = useState("")
   const importConfigRef = useRef(null)
   const [savedProfiles, setSavedProfiles] = useState(() => {
@@ -584,6 +585,70 @@ export default function App() {
     }
   }
 
+  function resetDemoConfig() {
+    const demoProfiles = {
+      "Home A": {
+        locationName: "Home A",
+        locationSubnet: "192.168.1.x",
+        locationNotes: "Primary home network for the Bitaxe cluster.",
+        miners: [
+          { name: "Carbon-01", ip: "192.168.1.100" },
+          { name: "Neon-01", ip: "192.168.1.101" },
+          { name: "Argon-01", ip: "192.168.1.102" }
+        ]
+      }
+    }
+
+    setWalletLabel("Main Payout Wallet")
+    setWalletAddress("bc1qexamplewalletaddress0000000000000000000")
+    setWalletNotes("Primary BTC payout destination for cluster rewards.")
+    setShowWalletAddress(false)
+
+    setLocationName("Home A")
+    setLocationSubnet("192.168.1.x")
+    setLocationNotes("Primary home network for the Bitaxe cluster.")
+    setNewProfileName("")
+
+    setMiner1Name("Carbon-01")
+    setMiner1Ip("192.168.1.100")
+    setMiner2Name("Neon-01")
+    setMiner2Ip("192.168.1.101")
+    setMiner3Name("Argon-01")
+    setMiner3Ip("192.168.1.102")
+
+    setSavedProfiles(demoProfiles)
+
+    const defaultApi = "https://bitaxe-dashboard.onrender.com/api"
+    setApiBaseUrl(defaultApi)
+    setSettingsPin("1234")
+    setPinInput("")
+    setNewPinInput("")
+    setSettingsUnlocked(true)
+
+    localStorage.setItem("walletLabel", "Main Payout Wallet")
+    localStorage.setItem("walletAddress", "bc1qexamplewalletaddress0000000000000000000")
+    localStorage.setItem("walletNotes", "Primary BTC payout destination for cluster rewards.")
+
+    localStorage.setItem("locationName", "Home A")
+    localStorage.setItem("locationSubnet", "192.168.1.x")
+    localStorage.setItem("locationNotes", "Primary home network for the Bitaxe cluster.")
+
+    localStorage.setItem("miner1Name", "Carbon-01")
+    localStorage.setItem("miner1Ip", "192.168.1.100")
+    localStorage.setItem("miner2Name", "Neon-01")
+    localStorage.setItem("miner2Ip", "192.168.1.101")
+    localStorage.setItem("miner3Name", "Argon-01")
+    localStorage.setItem("miner3Ip", "192.168.1.102")
+
+    localStorage.setItem("savedProfiles", JSON.stringify(demoProfiles))
+    localStorage.setItem("apiBaseUrl", defaultApi)
+    localStorage.setItem("settingsPin", "1234")
+    localStorage.setItem("settingsUnlocked", "true")
+
+    setToast("Demo config restored")
+    setTimeout(() => setToast(""), 2200)
+  }
+
   const configuredMiners = [
     { miner_name: miner1Name, miner_ip: miner1Ip },
     { miner_name: miner2Name, miner_ip: miner2Ip },
@@ -650,12 +715,23 @@ export default function App() {
           backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 2px, #ffffff03 2px, #ffffff03 4px)",
         }} />
 
-        <div style={{ maxWidth: 1100, margin: "0 auto", padding: "28px 20px", position: "relative", zIndex: 1 }}>
+        <div style={{
+          maxWidth: 1100,
+          margin: "0 auto",
+          padding: isMobile ? "18px 12px" : "28px 20px",
+          position: "relative",
+          zIndex: 1
+        }}>
 
           {/* Header */}
           <div style={{
-            display: "flex", alignItems: "flex-start", justifyContent: "space-between",
-            marginBottom: 32, animation: "fadeUp 0.4s ease both",
+            display: "flex",
+            flexDirection: isMobile ? "column" : "row",
+            alignItems: isMobile ? "stretch" : "flex-start",
+            justifyContent: "space-between",
+            gap: isMobile ? 14 : 0,
+            marginBottom: 32,
+            animation: "fadeUp 0.4s ease both",
           }}>
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
@@ -748,7 +824,13 @@ export default function App() {
           </div>
 
           {/* Nav tabs */}
-          <div style={{ display: "flex", gap: 4, marginBottom: 28, animation: "fadeUp 0.4s ease 0.05s both" }}>
+          <div style={{
+            display: "flex",
+            gap: 6,
+            flexWrap: "wrap",
+            marginBottom: 28,
+            animation: "fadeUp 0.4s ease 0.05s both"
+          }}>
             {[
   ["dashboard", "Dashboard"],
   ["crew", "Crew"],
@@ -769,7 +851,12 @@ export default function App() {
           {tab === "dashboard" && <>
 
             {/* Stat cards */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 14, marginBottom: 24 }}>
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fit, minmax(210px, 1fr))",
+              gap: 14,
+              marginBottom: 24
+            }}>
               {[
                 { label: "CLUSTER HASHRATE", value: (status?.cluster?.totalHashrateGhs || 0).toFixed(2), suffix: " GH/s", color: "#f7931a", delay: 0.1 },
                 { label: "DAILY EARNINGS",   value: dailyUSD.toFixed(4), prefix: "$", color: "#3fb950", delay: 0.15 },
@@ -806,7 +893,7 @@ export default function App() {
               <div style={{ fontSize: 10, color: "#8b949e", letterSpacing: 2, textTransform: "uppercase", marginBottom: 14 }}>
                 System Status
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
                 <div style={{
                   background: "#161b22", border: "1px solid #21262d", borderRadius: 10,
                   padding: "12px 14px"
@@ -869,7 +956,7 @@ export default function App() {
               <div style={{ fontSize: 10, color: "#8b949e", letterSpacing: 2, textTransform: "uppercase", marginBottom: 14 }}>
                 Share / Access
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
                 <div style={{
                   background: "#161b22", border: "1px solid #21262d", borderRadius: 10,
                   padding: "12px 14px"
@@ -961,7 +1048,7 @@ export default function App() {
               <div style={{ fontSize: 10, color: "#8b949e", letterSpacing: 2, textTransform: "uppercase", marginBottom: 14 }}>
                 QR Access
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16, alignItems: "center" }}>
+              <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fit, minmax(220px, 1fr))", gap: 16, alignItems: "center" }}>
                 <div style={{
                   background: "#161b22",
                   border: "1px solid #21262d",
@@ -1199,7 +1286,7 @@ export default function App() {
               const newEach = newMembers.length > 0
                 ? newShare / newMembers.length : 0
               return (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, animation: "fadeUp 0.5s ease 0.2s both" }}>
+                <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 14, animation: "fadeUp 0.5s ease 0.2s both" }}>
                   <div style={{
                     border: "1px solid #3fb95033",
                     borderRadius: 14, padding: "22px 24px",
@@ -1304,7 +1391,7 @@ export default function App() {
             ) : (
             <div style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+              gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fit, minmax(260px, 1fr))",
               gap: 16,
               marginBottom: 24,
               animation: "fadeUp 0.5s ease 0.1s both",
@@ -1838,22 +1925,41 @@ export default function App() {
                   />
                 </div>
 
-                <button
-                  onClick={lockSettings}
-                  style={{
-                    background: "#f8514918",
-                    border: "1px solid #f8514944",
-                    color: "#f85149",
-                    borderRadius: 999,
-                    padding: "8px 14px",
-                    fontSize: 11,
-                    fontWeight: 700,
-                    fontFamily: "'Space Mono', monospace",
-                    cursor: "pointer"
-                  }}
-                >
-                  LOCK SETTINGS
-                </button>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <button
+                    onClick={resetDemoConfig}
+                    style={{
+                      background: "#f7931a18",
+                      border: "1px solid #f7931a44",
+                      color: "#f7931a",
+                      borderRadius: 999,
+                      padding: "8px 14px",
+                      fontSize: 11,
+                      fontWeight: 700,
+                      fontFamily: "'Space Mono', monospace",
+                      cursor: "pointer"
+                    }}
+                  >
+                    RESET DEMO
+                  </button>
+
+                  <button
+                    onClick={lockSettings}
+                    style={{
+                      background: "#f8514918",
+                      border: "1px solid #f8514944",
+                      color: "#f85149",
+                      borderRadius: 999,
+                      padding: "8px 14px",
+                      fontSize: 11,
+                      fontWeight: 700,
+                      fontFamily: "'Space Mono', monospace",
+                      cursor: "pointer"
+                    }}
+                  >
+                    LOCK SETTINGS
+                  </button>
+                </div>
               </div>
             </div>
             )}
