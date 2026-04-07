@@ -178,7 +178,7 @@ export default function App() {
   const [settingsPin, setSettingsPin] = useState(() => localStorage.getItem("settingsPin") || "1234")
   const [pinInput, setPinInput] = useState("")
   const [apiBaseUrl, setApiBaseUrl] = useState(
-    () => localStorage.getItem("apiBaseUrl") || `${window.location.protocol}//${window.location.hostname}:3001/api`
+    () => localStorage.getItem("apiBaseUrl") || "https://bitaxe-dashboard.onrender.com/api"
   )
   const [backendOnline, setBackendOnline] = useState(false)
   const [newPinInput, setNewPinInput] = useState("")
@@ -299,8 +299,11 @@ export default function App() {
   const total      = status?.cluster?.totalMiners  || 3
   const hostName = window.location.hostname
   const hostPort = window.location.port || "5173"
-  const frontendUrl = `${window.location.protocol}//${hostName}${window.location.port ? `:${hostPort}` : ""}/`
-  const backendRootUrl = `${window.location.protocol}//${hostName}:3001/`
+  const shareHost =
+    localStorage.getItem("shareHost") ||
+    (hostName === "localhost" || hostName === "127.0.0.1" ? "192.168.1.152" : hostName)
+  const frontendUrl = `${window.location.protocol}//${shareHost}${window.location.port ? `:${hostPort}` : ""}/`
+  const backendRootUrl = `${window.location.protocol}//${shareHost}:3001/`
 
   const locationProfiles = {
     "Home A": {
