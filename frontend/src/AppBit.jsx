@@ -1089,6 +1089,46 @@ export default function App() {
               </div>
             </div>
 
+            {/* Install App */}
+            <div style={{
+              background: "#0d1117", border: "1px solid #21262d", borderRadius: 14,
+              padding: "18px 20px", marginBottom: 24,
+              animation: "fadeUp 0.5s ease 0.297s both",
+            }}>
+              <div style={{ fontSize: 10, color: "#8b949e", letterSpacing: 2, textTransform: "uppercase", marginBottom: 14 }}>
+                Install App
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12 }}>
+                <div style={{
+                  background: "#161b22",
+                  border: "1px solid #21262d",
+                  borderRadius: 10,
+                  padding: "12px 14px"
+                }}>
+                  <div style={{ color: "#e6edf3", fontSize: 14, marginBottom: 6 }}>
+                    iPhone / iPad
+                  </div>
+                  <div style={{ color: "#8b949e", fontSize: 12, lineHeight: 1.6 }}>
+                    Open this app in Safari, tap the <b>Share</b> button, then choose <b>Add to Home Screen</b>.
+                  </div>
+                </div>
+
+                <div style={{
+                  background: "#161b22",
+                  border: "1px solid #21262d",
+                  borderRadius: 10,
+                  padding: "12px 14px"
+                }}>
+                  <div style={{ color: "#e6edf3", fontSize: 14, marginBottom: 6 }}>
+                    Android
+                  </div>
+                  <div style={{ color: "#8b949e", fontSize: 12, lineHeight: 1.6 }}>
+                    Open this app in Chrome, tap the browser menu, then choose <b>Install app</b> or <b>Add to Home screen</b>.
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Probability arcs */}
             <div style={{
               background: "#0d1117", border: "1px solid #21262d", borderRadius: 14,
