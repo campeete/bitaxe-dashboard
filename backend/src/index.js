@@ -13,139 +13,10 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
-let DEMO_MODE = process.env.DEMO_MODE === 'true';
-
-function getDemoStatus() {
-  const miners = [
-    {
-      miner_ip: "192.168.1.100",
-      miner_name: "Carbon-01",
-      is_online: true,
-      hashrate_ghs: 1.28,
-      temp_c: 58,
-      power_watts: 14.2
-    },
-    {
-      miner_ip: "192.168.1.101",
-      miner_name: "Neon-01",
-      is_online: true,
-      hashrate_ghs: 1.31,
-      temp_c: 61,
-      power_watts: 14.8
-    },
-    {
-      miner_ip: "192.168.1.102",
-      miner_name: "Argon-01",
-      is_online: true,
-      hashrate_ghs: 1.22,
-      temp_c: 57,
-      power_watts: 13.9
-    }
-  ];
-
-  const totalHashrate = miners.reduce((sum, m) => sum + m.hashrate_ghs, 0);
-
-  return {
-    miners,
-    cluster: {
-      totalHashrateGhs: totalHashrate,
-      onlineCount: miners.filter(m => m.is_online).length,
-      totalMiners: miners.length,
-    },
-    stats: {
-      btc_price_usd: 96000,
-      block_hit_prob_30d: 0.02,
-      block_hit_prob_1yr: 0.21,
-      network_hashrate_eh: 700,
-      updated_at: Date.now()
-    },
-    cumulative: {
-      total_btc: 0.00018421,
-      total_usd: 17.68
-    },
-    lastUpdated: Date.now()
-  };
-}
-
-function getDemoHistory(hours = 6) {
-  const now = Date.now();
-  const points = [];
-  const totalPoints = Math.max(12, hours * 6);
-
-  for (let i = totalPoints - 1; i >= 0; i--) {
-    const bucket = now - i * 10 * 60 * 1000;
-    const wave = Math.sin(i / 2.7) * 0.18;
-    const drift = Math.cos(i / 4.1) * 0.09;
-    const total_hashrate = 3.75 + wave + drift;
-
-    points.push({
-      bucket,
-      total_hashrate: Number(total_hashrate.toFixed(3)),
-      avg_temp: Number((58 + Math.sin(i / 3.4) * 2.5).toFixed(1)),
-      active_miners: 3
-    });
-  }
-
-  return points;
-}
-
-function getDemoEarnings(days = 30) {
-  const rows = [];
-  const now = new Date();
-
-  for (let i = 0; i < days; i++) {
-    const d = new Date(now);
-    d.setDate(now.getDate() - i);
-    const date_str = d.toISOString().slice(0, 10);
-    const btc = 0.000005 + (Math.sin(i / 3) + 1) * 0.0000012;
-    const usd = btc * 96000;
-
-    rows.push({
-      date_str,
-      btc: Number(btc.toFixed(8)),
-      usd: Number(usd.toFixed(2))
-    });
-  }
-
-  return rows;
-}
-
-// ── GET / ────────────────────────────────────────────────────────────────────
-app.get('/', (req, res) => {
-  res.json({
-    ok: true,
-    message: 'Bitaxe Dashboard Backend is running',
-    demoMode: DEMO_MODE,
-    endpoints: ['/api/status', '/api/history/all?hours=6', '/api/earnings']
-  });
-});
-
-app.post('/api/demo-mode', (req, res) => {
-  try {
-    if (typeof req.body.enabled === 'boolean') {
-      DEMO_MODE = req.body.enabled;
-    } else {
-      DEMO_MODE = !DEMO_MODE;
-    }
-
-    res.json({
-      ok: true,
-      demoMode: DEMO_MODE
-    });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-
 // ── GET /api/status ──────────────────────────────────────────────────────────
 // Latest snapshot for every miner + cluster totals
 app.get('/api/status', async (req, res) => {
   try {
-    if (DEMO_MODE) {
-      return res.json(getDemoStatus());
-    }
-
     const snapshots = getLatestSnapshots();
     const totalHashrate = snapshots
       .filter(s => s.is_online)
@@ -173,9 +44,7 @@ app.get('/api/status', async (req, res) => {
 
 // ── GET /api/history/:ip ─────────────────────────────────────────────────────
 // Hashrate + temp history for one miner (last 24h by default)
-app.get('/api/history/:ip', (req, res, next) => {
-  if (req.params.ip === 'all') return next();
-
+app.get('/api/history/:ip', (req, res) => {
   try {
     const hours = parseInt(req.query.hours) || 24;
     const data = getHashrateHistory(req.params.ip, hours);
@@ -189,11 +58,6 @@ app.get('/api/history/:ip', (req, res, next) => {
 // Combined cluster hashrate over time
 app.get('/api/history/all', (req, res) => {
   try {
-    if (DEMO_MODE) {
-      const hours = parseInt(req.query.hours) || 24;
-      return res.json(getDemoHistory(hours));
-    }
-
     const db = getDb();
     const hours = parseInt(req.query.hours) || 24;
     const since = Date.now() - hours * 60 * 60 * 1000;
@@ -221,11 +85,6 @@ app.get('/api/history/all', (req, res) => {
 // Daily earnings breakdown
 app.get('/api/earnings', (req, res) => {
   try {
-    if (DEMO_MODE) {
-      const days = parseInt(req.query.days) || 30;
-      return res.json(getDemoEarnings(days));
-    }
-
     const db = getDb();
     const days = parseInt(req.query.days) || 30;
     const rows = db.prepare(`
