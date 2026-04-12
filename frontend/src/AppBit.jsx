@@ -1,19 +1,18 @@
 import { useState, useEffect, useRef } from "react"
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Area, AreaChart } from "recharts"
-import { QRCodeSVG } from "qrcode.react"
 
-// ── Crew config ───────────────────────────────────────────────────────────────
 const CREW = [
-  { id: "carbon",  name: "Carbon",  devices: 2, color: "#f7931a", you: true  },
-  { id: "neon",    name: "Neon",    devices: 2, color: "#58a6ff", you: false },
-  { id: "argon",   name: "Argon",   devices: 2, color: "#3fb950", you: false },
+  { id: "carbon", name: "Carbon", devices: 2, color: "#f7931a", you: true  },
+  { id: "neon",   name: "Neon",   devices: 2, color: "#58a6ff", you: false },
+  { id: "argon",  name: "Argon",  devices: 2, color: "#3fb950", you: false },
 ]
-
 const BLOCK_REWARD_USD = 300000
 const TAX_RATE = 0.20
-const DEFAULT_API = `${window.location.protocol}//${window.location.hostname}:3001/api`
+const API = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : '/api'
 
-// ── Utility ───────────────────────────────────────────────────────────────────
+const TYPE_COLORS = { bitaxe: "#f7931a", nerdqaxe: "#bc8cff", generic_asic: "#58a6ff" }
+const TYPE_LABELS = { bitaxe: "Bitaxe", nerdqaxe: "NerdQAxe", generic_asic: "ASIC" }
+
 function calcPayouts(crew, newMembers = []) {
   const origDevices = crew.reduce((s, m) => s + m.devices, 0)
   const newDevices  = newMembers.reduce((s, m) => s + m.devices, 0)
@@ -25,99 +24,84 @@ function calcPayouts(crew, newMembers = []) {
   return { origEach, newShare: newShare * (1 - TAX_RATE), total }
 }
 
-// ── Animated counter ──────────────────────────────────────────────────────────
 function Counter({ value, prefix = "", suffix = "", decimals = 2, color = "#f7931a" }) {
   const [display, setDisplay] = useState(0)
   const prev = useRef(0)
   useEffect(() => {
-    const start = prev.current
-    const end   = parseFloat(value) || 0
+    const start = prev.current, end = parseFloat(value) || 0
     if (start === end) return
-    const dur = 800, steps = 40
-    let i = 0
+    const dur = 800, steps = 40; let i = 0
     const t = setInterval(() => {
-      i++
-      setDisplay(start + (end - start) * (i / steps))
+      i++; setDisplay(start + (end - start) * (i / steps))
       if (i >= steps) { clearInterval(t); prev.current = end }
     }, dur / steps)
     return () => clearInterval(t)
   }, [value])
-  return (
-    <span style={{ color, fontFamily: "'Space Mono', monospace", fontWeight: 700 }}>
-      {prefix}{display.toFixed(decimals)}{suffix}
-    </span>
-  )
+  return <span style={{ color, fontFamily: "'Space Mono', monospace", fontWeight: 700 }}>{prefix}{display.toFixed(decimals)}{suffix}</span>
 }
 
-// ── Probability arc ───────────────────────────────────────────────────────────
 function ProbArc({ pct, label, color }) {
-  const r = 54, cx = 64, cy = 64
-  const circ = 2 * Math.PI * r
-  const dash  = (Math.min(pct, 100) / 100) * circ
+  const r = 54, cx = 64, cy = 64, circ = 2 * Math.PI * r
+  const dash = (Math.min(pct, 100) / 100) * circ
   return (
     <div style={{ textAlign: "center", flex: 1 }}>
       <svg viewBox="0 0 128 128" width={110} height={110} style={{ display: "block", margin: "0 auto" }}>
         <circle cx={cx} cy={cy} r={r} fill="none" stroke="#1c2128" strokeWidth={10} />
         <circle cx={cx} cy={cy} r={r} fill="none" stroke={color} strokeWidth={10}
-          strokeDasharray={`${dash} ${circ}`} strokeDashoffset={circ * 0.25}
-          strokeLinecap="round"
+          strokeDasharray={`${dash} ${circ}`} strokeDashoffset={circ * 0.25} strokeLinecap="round"
           style={{ transition: "stroke-dasharray 1.2s cubic-bezier(.4,0,.2,1)" }} />
         <text x={cx} y={cy - 6} textAnchor="middle" fill={color}
-          style={{ fontFamily: "'Space Mono', monospace", fontSize: 18, fontWeight: 700 }}>
-          {pct.toFixed(1)}%
-        </text>
-        <text x={cx} y={cy + 14} textAnchor="middle" fill="#8b949e" style={{ fontSize: 10 }}>
-          {label}
-        </text>
+          style={{ fontFamily: "'Space Mono', monospace", fontSize: 18, fontWeight: 700 }}>{pct.toFixed(1)}%</text>
+        <text x={cx} y={cy + 14} textAnchor="middle" fill="#8b949e" style={{ fontSize: 10 }}>{label}</text>
       </svg>
     </div>
   )
 }
 
-// ── Crew card ─────────────────────────────────────────────────────────────────
+function TypeBadge({ type }) {
+  const color = TYPE_COLORS[type] || "#8b949e"
+  const label = TYPE_LABELS[type] || type
+  return (
+    <span style={{
+      background: color + "18", color, border: `1px solid ${color}44`,
+      borderRadius: 4, padding: "1px 7px", fontSize: 10,
+      fontFamily: "'Space Mono', monospace", fontWeight: 700, letterSpacing: 0.5,
+    }}>{label}</span>
+  )
+}
+
 function CrewCard({ member, payout, totalDevices, animDelay }) {
   const pct = (member.devices / totalDevices * 100).toFixed(1)
   return (
     <div style={{
-      background: "#0d1117",
-      border: `1px solid ${member.color}33`,
-      borderRadius: 14,
-      padding: "18px 20px",
-      position: "relative",
-      overflow: "hidden",
-      animation: `fadeUp 0.5s ease ${animDelay}s both`,
+      background: "#0d1117", border: `1px solid ${member.color}33`,
+      borderRadius: 14, padding: "18px 20px", position: "relative",
+      overflow: "hidden", animation: `fadeUp 0.5s ease ${animDelay}s both`,
     }}>
       {member.you && (
         <span style={{
           position: "absolute", top: 10, right: 12,
           background: member.color + "22", color: member.color,
-          border: `1px solid ${member.color}44`,
-          borderRadius: 6, fontSize: 10, padding: "2px 8px", fontWeight: 700,
+          border: `1px solid ${member.color}44`, borderRadius: 6,
+          fontSize: 10, padding: "2px 8px", fontWeight: 700,
           fontFamily: "'Space Mono', monospace",
         }}>YOU</span>
       )}
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
         <div style={{
           width: 36, height: 36, borderRadius: "50%",
-          background: member.color + "22",
-          border: `2px solid ${member.color}`,
+          background: member.color + "22", border: `2px solid ${member.color}`,
           display: "flex", alignItems: "center", justifyContent: "center",
           fontFamily: "'Space Mono', monospace", color: member.color, fontWeight: 700, fontSize: 13,
-        }}>
-          {member.name[0]}
-        </div>
+        }}>{member.name[0]}</div>
         <div>
-          <div style={{ color: "#e6edf3", fontWeight: 700, fontSize: 15, fontFamily: "'Space Mono', monospace" }}>
-            {member.name}
-          </div>
+          <div style={{ color: "#e6edf3", fontWeight: 700, fontSize: 15, fontFamily: "'Space Mono', monospace" }}>{member.name}</div>
           <div style={{ color: "#8b949e", fontSize: 11 }}>{member.devices} device{member.devices > 1 ? "s" : ""}</div>
         </div>
       </div>
-      {/* Device bar */}
       <div style={{ marginBottom: 12 }}>
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#8b949e", marginBottom: 4 }}>
-          <span>Cluster share</span>
-          <span style={{ color: member.color }}>{pct}%</span>
+          <span>Cluster share</span><span style={{ color: member.color }}>{pct}%</span>
         </div>
         <div style={{ height: 6, borderRadius: 3, background: "#21262d", overflow: "hidden" }}>
           <div style={{
@@ -129,23 +113,18 @@ function CrewCard({ member, payout, totalDevices, animDelay }) {
       </div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
         <span style={{ color: "#8b949e", fontSize: 11 }}>Block payout</span>
-        <span style={{
-          fontFamily: "'Space Mono', monospace", fontWeight: 700,
-          fontSize: 16, color: "#3fb950",
-        }}>${Math.round(payout).toLocaleString()}</span>
+        <span style={{ fontFamily: "'Space Mono', monospace", fontWeight: 700, fontSize: 16, color: "#3fb950" }}>
+          ${Math.round(payout).toLocaleString()}
+        </span>
       </div>
     </div>
   )
 }
 
-// ── Custom tooltip ────────────────────────────────────────────────────────────
 function ChartTip({ active, payload, label }) {
   if (!active || !payload?.length) return null
   return (
-    <div style={{
-      background: "#161b22", border: "1px solid #21262d",
-      borderRadius: 8, padding: "8px 14px", fontSize: 12,
-    }}>
+    <div style={{ background: "#161b22", border: "1px solid #21262d", borderRadius: 8, padding: "8px 14px", fontSize: 12 }}>
       <div style={{ color: "#8b949e", marginBottom: 4 }}>{label}</div>
       {payload.map((p, i) => (
         <div key={i} style={{ color: p.color, fontFamily: "'Space Mono', monospace" }}>
@@ -156,510 +135,445 @@ function ChartTip({ active, payload, label }) {
   )
 }
 
-// ── Main app ──────────────────────────────────────────────────────────────────
-export default function App() {
-  const [status, setStatus]   = useState(null)
-  const [history, setHistory] = useState([])
-  const [lastPoll, setLastPoll] = useState(null)
-  const [newMembers, setNewMembers] = useState([])
-  const [addCount, setAddCount] = useState(1)
-  const [tab, setTab] = useState("dashboard")
-  const [demoMode, setDemoMode] = useState(false)
-  const [toast, setToast] = useState("")
-  const [walletLabel, setWalletLabel] = useState(() => localStorage.getItem("walletLabel") || "Main Payout Wallet")
-  const [walletAddress, setWalletAddress] = useState(() => localStorage.getItem("walletAddress") || "bc1qexamplewalletaddress0000000000000000000")
-  const [walletNotes, setWalletNotes] = useState(() => localStorage.getItem("walletNotes") || "Primary BTC payout destination for cluster rewards.")
-  const [showWalletAddress, setShowWalletAddress] = useState(false)
-  const [locationName, setLocationName] = useState(() => localStorage.getItem("locationName") || "Home A")
-  const [locationSubnet, setLocationSubnet] = useState(() => localStorage.getItem("locationSubnet") || "192.168.1.x")
-  const [locationNotes, setLocationNotes] = useState(() => localStorage.getItem("locationNotes") || "Primary home network for the Bitaxe cluster.")
-  const [newProfileName, setNewProfileName] = useState("")
-  const [settingsUnlocked, setSettingsUnlocked] = useState(() => localStorage.getItem("settingsUnlocked") === "true")
-  const [settingsPin, setSettingsPin] = useState(() => localStorage.getItem("settingsPin") || "1234")
-  const [pinInput, setPinInput] = useState("")
-  const [apiBaseUrl, setApiBaseUrl] = useState(
-    () => localStorage.getItem("apiBaseUrl") || "https://bitaxe-dashboard.onrender.com/api"
-  )
-  const [backendOnline, setBackendOnline] = useState(false)
-  const isMobile = window.innerWidth <= 768
-  const [newPinInput, setNewPinInput] = useState("")
-  const importConfigRef = useRef(null)
-  const [savedProfiles, setSavedProfiles] = useState(() => {
-    const saved = localStorage.getItem("savedProfiles")
-    if (saved) {
-      try { return JSON.parse(saved) } catch {}
+function SimulatorTab() {
+  const [hashPerMiner, setHashPerMiner] = useState(1.2)
+  const [btcPrice,     setBtcPrice]     = useState(84000)
+  const [netEh,        setNetEh]        = useState(720)
+  const [elec,         setElec]         = useState(0.10)
+  const [watts,        setWatts]        = useState(15)
+  const [days,         setDays]         = useState(90)
+  const [crewMode,     setCrewMode]     = useState("orig")
+  const [chartMode,    setChartMode]    = useState("cumulative")
+  const [carbonD,      setCarbonD]      = useState(2)
+  const [neonD,        setNeonD]        = useState(2)
+  const [argonD,       setArgonD]       = useState(2)
+  const [origTotal,    setOrigTotal]    = useState(6)
+  const [newMemberD,   setNewMemberD]   = useState(2)
+  const [taxRate,      setTaxRate]      = useState(20)
+
+  const totalDevices = crewMode === "orig" ? carbonD + neonD + argonD : origTotal + newMemberD
+  const totalHash    = totalDevices * hashPerMiner
+  const netGhs       = netEh * 1e9
+  const dailyBtc     = (totalHash / netGhs) * 144 * 3.125
+  const dailyUsd     = dailyBtc * btcPrice
+  const dailyElec    = (watts * totalDevices / 1000) * 24 * elec
+  const dailyProfit  = dailyUsd - dailyElec
+  const BLOCK        = 300000
+
+  function blockProb(h, n, d) {
+    const p = h / (n * 1e9)
+    return (1 - Math.pow(1 - p, 144 * d)) * 100
+  }
+
+  const probData = [
+    { label: "7 days",  val: blockProb(totalHash, netEh, 7) },
+    { label: "30 days", val: blockProb(totalHash, netEh, 30) },
+    { label: "90 days", val: blockProb(totalHash, netEh, 90) },
+    { label: "1 year",  val: blockProb(totalHash, netEh, 365) },
+    { label: fmtDays(days), val: blockProb(totalHash, netEh, days) },
+  ]
+  const maxProb = Math.max(...probData.map(p => p.val), 0.001)
+
+  function fmtDays(d) {
+    if (d >= 365) return (d/365).toFixed(1) + "yr"
+    if (d >= 30)  return Math.round(d/30) + "mo"
+    return d + "d"
+  }
+
+  const chartData = (() => {
+    const pts = []
+    if (chartMode === "daily") {
+      const show = Math.min(days, 60)
+      for (let d = 1; d <= show; d++) {
+        pts.push({ name: "D"+d, pool: parseFloat((dailyUsd*d).toFixed(4)), profit: parseFloat(((dailyUsd-dailyElec)*d).toFixed(4)) })
+      }
+    } else if (chartMode === "weekly") {
+      const weeks = Math.min(Math.ceil(days/7), 52)
+      for (let w = 1; w <= weeks; w++) {
+        pts.push({ name: "W"+w, pool: parseFloat((dailyUsd*7*w).toFixed(3)), profit: parseFloat(((dailyUsd-dailyElec)*7*w).toFixed(3)) })
+      }
+    } else if (chartMode === "monthly") {
+      const months = Math.min(Math.ceil(days/30), 24)
+      for (let m = 1; m <= months; m++) {
+        pts.push({ name: "M"+m, pool: parseFloat((dailyUsd*30*m).toFixed(2)), profit: parseFloat(((dailyUsd-dailyElec)*30*m).toFixed(2)) })
+      }
+    } else {
+      const show = Math.min(days, 365)
+      const step = Math.max(1, Math.floor(show/60))
+      for (let d = step; d <= show; d += step) {
+        pts.push({ name: "D"+d, pool: parseFloat((dailyUsd*d).toFixed(4)), profit: parseFloat(((dailyUsd-dailyElec)*d).toFixed(4)) })
+      }
     }
-    return {}
-  })
-  const [activeProfile, setActiveProfile] = useState(() => localStorage.getItem("activeProfile") || "Home A")
-  const [miner1Name, setMiner1Name] = useState(() => localStorage.getItem("miner1Name") || "Carbon-01")
-  const [miner1Ip, setMiner1Ip] = useState(() => localStorage.getItem("miner1Ip") || "192.168.1.100")
-  const [miner2Name, setMiner2Name] = useState(() => localStorage.getItem("miner2Name") || "Neon-01")
-  const [miner2Ip, setMiner2Ip] = useState(() => localStorage.getItem("miner2Ip") || "192.168.1.101")
-  const [miner3Name, setMiner3Name] = useState(() => localStorage.getItem("miner3Name") || "Argon-01")
-  const [miner3Ip, setMiner3Ip] = useState(() => localStorage.getItem("miner3Ip") || "192.168.1.102")
+    return pts
+  })()
+
+  const panel = { background: "#0d1117", border: "1px solid #21262d", borderRadius: 14, padding: "20px 24px", marginBottom: 16 }
+  const lbl   = { fontSize: 10, color: "#8b949e", letterSpacing: 2, textTransform: "uppercase", marginBottom: 14 }
+  const sliderRow = (label, val, setter, min, max, step, fmt) => (
+    <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
+      <span style={{ fontSize: 11, color: "#8b949e", minWidth: 150 }}>{label}</span>
+      <input type="range" min={min} max={max} step={step} value={val}
+        onChange={e => setter(parseFloat(e.target.value))}
+        style={{ flex: 1, accentColor: "#f7931a" }} />
+      <span style={{ fontSize: 12, fontWeight: 700, color: "#e6edf3", fontFamily: "'Space Mono', monospace", minWidth: 80, textAlign: "right" }}>{fmt(val)}</span>
+    </div>
+  )
+
+  const crewCards = crewMode === "orig" ? (() => {
+    const devs  = [carbonD, neonD, argonD]
+    const names = ["Carbon", "Neon", "Argon"]
+    const colors= ["#f7931a", "#58a6ff", "#3fb950"]
+    return devs.map((d, i) => {
+      const share  = d / totalDevices
+      const payout = Math.round(BLOCK * share)
+      const daily  = (d * hashPerMiner / netGhs) * 144 * 3.125 * btcPrice
+      return (
+        <div key={names[i]} style={{ background: "#0d1117", border: `1px solid ${colors[i]}33`, borderRadius: 12, padding: "16px 18px" }}>
+          <div style={{ fontFamily: "'Space Mono', monospace", fontWeight: 700, fontSize: 14, color: "#e6edf3", marginBottom: 4 }}>{names[i]}</div>
+          <div style={{ fontSize: 11, color: "#8b949e", marginBottom: 10 }}>{d} device{d>1?"s":""} · {(share*100).toFixed(1)}% of cluster</div>
+          <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 20, fontWeight: 700, color: colors[i] }}>${payout.toLocaleString()}</div>
+          <div style={{ fontSize: 10, color: "#8b949e", marginTop: 3 }}>if block hit · ${daily.toFixed(5)}/day pool</div>
+          <div style={{ height: 4, borderRadius: 2, background: "#21262d", overflow: "hidden", marginTop: 10 }}>
+            <div style={{ height: "100%", width: `${(share*100).toFixed(1)}%`, background: colors[i], borderRadius: 2, transition: "width 0.3s" }} />
+          </div>
+        </div>
+      )
+    })
+  })() : (() => {
+    const tr     = taxRate / 100
+    const oShare = origTotal / totalDevices
+    const nShare = newMemberD / totalDevices
+    const tax    = nShare * BLOCK * tr
+    const oEach  = Math.round((oShare * BLOCK + tax) / 3)
+    const nEach  = Math.round(nShare * BLOCK * (1 - tr))
+    const oDaily = (origTotal * hashPerMiner / netGhs) * 144 * 3.125 * btcPrice / 3
+    const nDaily = (newMemberD * hashPerMiner / netGhs) * 144 * 3.125 * btcPrice
+    return [
+      <div key="orig" style={{ background: "#0d1117", border: "1px solid #f7931a33", borderRadius: 12, padding: "16px 18px" }}>
+        <div style={{ fontFamily: "'Space Mono', monospace", fontWeight: 700, fontSize: 14, color: "#e6edf3", marginBottom: 4 }}>Carbon / Neon / Argon</div>
+        <div style={{ fontSize: 11, color: "#8b949e", marginBottom: 10 }}>{origTotal} devices · {(oShare*100).toFixed(1)}% · incl. {taxRate}% tax from new member</div>
+        <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 20, fontWeight: 700, color: "#f7931a" }}>${oEach.toLocaleString()} each</div>
+        <div style={{ fontSize: 10, color: "#8b949e", marginTop: 3 }}>if block hit · ${oDaily.toFixed(5)}/day pool each</div>
+        <div style={{ height: 4, borderRadius: 2, background: "#21262d", overflow: "hidden", marginTop: 10 }}>
+          <div style={{ height: "100%", width: `${(oShare*100).toFixed(1)}%`, background: "#f7931a", borderRadius: 2, transition: "width 0.3s" }} />
+        </div>
+      </div>,
+      <div key="new" style={{ background: "#0d1117", border: "1px solid #bc8cff33", borderRadius: 12, padding: "16px 18px" }}>
+        <div style={{ fontFamily: "'Space Mono', monospace", fontWeight: 700, fontSize: 14, color: "#e6edf3", marginBottom: 4 }}>New Member</div>
+        <div style={{ fontSize: 11, color: "#8b949e", marginBottom: 10 }}>{newMemberD} device{newMemberD>1?"s":""} · {(nShare*100).toFixed(1)}% · after {taxRate}% tax</div>
+        <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 20, fontWeight: 700, color: "#bc8cff" }}>${nEach.toLocaleString()}</div>
+        <div style={{ fontSize: 10, color: "#8b949e", marginTop: 3 }}>if block hit · ${nDaily.toFixed(5)}/day pool</div>
+        <div style={{ height: 4, borderRadius: 2, background: "#21262d", overflow: "hidden", marginTop: 10 }}>
+          <div style={{ height: "100%", width: `${(nShare*100).toFixed(1)}%`, background: "#bc8cff", borderRadius: 2, transition: "width 0.3s" }} />
+        </div>
+      </div>
+    ]
+  })()
+
+  return (
+    <div style={{ animation: "fadeUp 0.4s ease both" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+        <div style={panel}>
+          <div style={lbl}>Mining variables</div>
+          {sliderRow("Hashrate per miner", hashPerMiner, setHashPerMiner, 0.5, 5, 0.1, v => v.toFixed(1)+" GH/s")}
+          {sliderRow("BTC price", btcPrice, setBtcPrice, 20000, 500000, 1000, v => "$"+v.toLocaleString())}
+          {sliderRow("Network hashrate", netEh, setNetEh, 200, 2000, 10, v => v+" EH/s")}
+          {sliderRow("Power cost $/kWh", elec, setElec, 0, 0.30, 0.01, v => "$"+v.toFixed(2))}
+          {sliderRow("Watts per miner", watts, setWatts, 5, 50, 1, v => v+"W")}
+          {sliderRow("Projection period", days, setDays, 1, 365, 1, v => fmtDays(v))}
+        </div>
+        <div style={panel}>
+          <div style={lbl}>Crew setup</div>
+          <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+            {[["orig","Original 3 add miners"],["new","Add new member"]].map(([m, l]) => (
+              <button key={m} onClick={() => setCrewMode(m)} style={{
+                background: crewMode === m ? "#f7931a18" : "transparent",
+                border: `1px solid ${crewMode === m ? "#f7931a44" : "#21262d"}`,
+                borderRadius: 8, padding: "5px 12px", fontSize: 11,
+                color: crewMode === m ? "#f7931a" : "#8b949e",
+                fontFamily: "'Space Mono', monospace", cursor: "pointer",
+              }}>{l}</button>
+            ))}
+          </div>
+          {crewMode === "orig" ? <>
+            {sliderRow("Carbon devices", carbonD, setCarbonD, 1, 10, 1, v => v)}
+            {sliderRow("Neon devices",   neonD,   setNeonD,   1, 10, 1, v => v)}
+            {sliderRow("Argon devices",  argonD,  setArgonD,  1, 10, 1, v => v)}
+          </> : <>
+            {sliderRow("Original crew devices", origTotal,   setOrigTotal,   1, 20, 1, v => v)}
+            {sliderRow("New member devices",     newMemberD,  setNewMemberD,  1, 10, 1, v => v)}
+            {sliderRow("Tax rate on new member", taxRate,     setTaxRate,     0, 50, 1, v => v+"%")}
+          </>}
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, marginBottom: 16 }}>
+        {[
+          { label: "Total hashrate",   val: totalHash.toFixed(2)+" GH/s",    sub: totalDevices+" miners",             color: "#f7931a" },
+          { label: "Daily earnings",   val: "$"+dailyUsd.toFixed(5),          sub: dailyBtc.toFixed(8)+" BTC",         color: "#3fb950" },
+          { label: "Daily profit",     val: "$"+dailyProfit.toFixed(5),       sub: "after $"+dailyElec.toFixed(3)+"/day elec", color: dailyProfit >= 0 ? "#3fb950" : "#f85149" },
+          { label: fmtDays(days)+" earnings", val: "$"+(dailyUsd*days).toFixed(2), sub: "$"+(dailyProfit*days).toFixed(2)+" profit", color: "#58a6ff" },
+          { label: "Break-even BTC",   val: dailyBtc > 0 ? "$"+Math.round(dailyElec/dailyBtc).toLocaleString() : "—", sub: "min price to profit", color: "#bc8cff" },
+        ].map(({ label, val, sub, color }) => (
+          <div key={label} style={{ background: "#0d1117", border: "1px solid #21262d", borderRadius: 12, padding: "14px 16px" }}>
+            <div style={{ fontSize: 9, color: "#8b949e", letterSpacing: 2, textTransform: "uppercase", marginBottom: 8 }}>{label}</div>
+            <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 16, fontWeight: 700, color }}>{val}</div>
+            <div style={{ fontSize: 10, color: "#8b949e", marginTop: 4 }}>{sub}</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={panel}>
+        <div style={lbl}>Block hit probability</div>
+        {probData.map(p => (
+          <div key={p.label} style={{ marginBottom: 10 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#8b949e", marginBottom: 3 }}>
+              <span>{p.label}</span>
+              <span style={{ fontWeight: 700, color: "#e6edf3", fontFamily: "'Space Mono', monospace" }}>{p.val.toFixed(3)}%</span>
+            </div>
+            <div style={{ height: 6, borderRadius: 3, background: "#21262d", overflow: "hidden" }}>
+              <div style={{ height: "100%", width: `${Math.min((p.val/maxProb)*100, 100).toFixed(1)}%`, background: "#58a6ff", borderRadius: 3, transition: "width 0.3s" }} />
+            </div>
+          </div>
+        ))}
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 8 }}>
+          {[
+            { l: "Block reward", v: "$"+Math.round(3.125*btcPrice).toLocaleString() },
+            { l: "Avg time to block", v: Math.round(100/blockProb(totalHash,netEh,365)*365)+"d avg" },
+            { l: "Pool daily est", v: "$"+dailyUsd.toFixed(5) },
+          ].map(({ l, v }) => (
+            <div key={l} style={{ background: "#161b22", borderRadius: 8, padding: "6px 12px", fontSize: 10, color: "#8b949e" }}>
+              {l}: <span style={{ color: "#e6edf3", fontFamily: "'Space Mono', monospace" }}>{v}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={panel}>
+        <div style={lbl}>Earnings projection</div>
+        <div style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap" }}>
+          {[["daily","Daily"],["weekly","Weekly"],["monthly","Monthly"],["cumulative","Cumulative"]].map(([m, l]) => (
+            <button key={m} onClick={() => setChartMode(m)} style={{
+              background: chartMode === m ? "#58a6ff18" : "transparent",
+              border: `1px solid ${chartMode === m ? "#58a6ff44" : "#21262d"}`,
+              borderRadius: 8, padding: "5px 12px", fontSize: 11,
+              color: chartMode === m ? "#58a6ff" : "#8b949e",
+              fontFamily: "'Space Mono', monospace", cursor: "pointer",
+            }}>{l}</button>
+          ))}
+        </div>
+        <div style={{ display: "flex", gap: 16, marginBottom: 10 }}>
+          {[["#f7931a","Pool earnings (USD)"],["#3fb950","After electricity cost"]].map(([c, l]) => (
+            <div key={l} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "#8b949e" }}>
+              <div style={{ width: 10, height: 10, borderRadius: 2, background: c }} />{l}
+            </div>
+          ))}
+        </div>
+        <ResponsiveContainer width="100%" height={200}>
+          <AreaChart data={chartData}>
+            <defs>
+              <linearGradient id="pg" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%"  stopColor="#f7931a" stopOpacity={0.25} />
+                <stop offset="95%" stopColor="#f7931a" stopOpacity={0} />
+              </linearGradient>
+              <linearGradient id="prg" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%"  stopColor="#3fb950" stopOpacity={0.25} />
+                <stop offset="95%" stopColor="#3fb950" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="#21262d" />
+            <XAxis dataKey="name" stroke="#8b949e" tick={{ fontSize: 9, fontFamily: "Space Mono" }} />
+            <YAxis stroke="#8b949e" tick={{ fontSize: 9, fontFamily: "Space Mono" }} tickFormatter={v => "$"+v.toFixed(3)} />
+            <Tooltip contentStyle={{ background: "#161b22", border: "1px solid #21262d", borderRadius: 8, fontSize: 11 }}
+              labelStyle={{ color: "#8b949e" }} itemStyle={{ fontFamily: "Space Mono, monospace" }} />
+            <Area type="monotone" dataKey="pool"   name="Pool earnings"      stroke="#f7931a" strokeWidth={2} fill="url(#pg)"  dot={false} />
+            <Area type="monotone" dataKey="profit" name="After electricity"  stroke="#3fb950" strokeWidth={2} fill="url(#prg)" dot={false} strokeDasharray="4 2" />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div style={panel}>
+        <div style={lbl}>Payout split</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
+          {crewCards}
+        </div>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 12 }}>
+          {[
+            { l: "Block reward total", v: "$"+BLOCK.toLocaleString() },
+            { l: "Total devices", v: totalDevices },
+            crewMode === "new" && { l: "Tax collected", v: "$"+Math.round((newMemberD/totalDevices)*BLOCK*(taxRate/100)).toLocaleString() },
+          ].filter(Boolean).map(({ l, v }) => (
+            <div key={l} style={{ background: "#161b22", borderRadius: 8, padding: "6px 12px", fontSize: 10, color: "#8b949e" }}>
+              {l}: <span style={{ color: "#e6edf3", fontFamily: "'Space Mono', monospace" }}>{v}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function DevicesTab() {
+  const [devices, setDevices]     = useState([])
+  const [supported, setSupported] = useState([])
+  const [form, setForm]           = useState({ ip: "", name: "", type: "bitaxe", owner: "", location: "", notes: "" })
+  const [msg, setMsg]             = useState(null)
+  const [loading, setLoading]     = useState(false)
+
+  async function loadDevices() {
+    try {
+      const r = await fetch(`${API}/devices`)
+      const d = await r.json()
+      setDevices(d.devices || [])
+      setSupported(d.supportedTypes || [])
+    } catch {}
+  }
+
+  useEffect(() => { loadDevices() }, [])
+
+  async function addDevice(e) {
+    e.preventDefault()
+    if (!form.ip) return setMsg({ error: true, text: "IP is required" })
+    setLoading(true)
+    try {
+      const r = await fetch(`${API}/devices`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      })
+      const d = await r.json()
+      if (!r.ok) { setMsg({ error: true, text: d.error }); return }
+      setMsg({ error: false, text: `${form.ip} registered as ${form.type}` })
+      setForm({ ip: "", name: "", type: "bitaxe", owner: "", location: "", notes: "" })
+      loadDevices()
+    } catch (e) { setMsg({ error: true, text: e.message }) }
+    finally { setLoading(false) }
+  }
+
+  async function toggleActive(device) {
+    await fetch(`${API}/devices/${encodeURIComponent(device.ip)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ active: device.active ? false : true }),
+    })
+    loadDevices()
+  }
+
+  async function removeDevice(ip) {
+    if (!confirm(`Deactivate ${ip}? History is preserved.`)) return
+    await fetch(`${API}/devices/${encodeURIComponent(ip)}`, { method: "DELETE" })
+    loadDevices()
+  }
+
+  const inp = (field, placeholder) => (
+    <input placeholder={placeholder} value={form[field]}
+      onChange={e => setForm(f => ({ ...f, [field]: e.target.value }))}
+      style={{ background: "#0d1117", border: "1px solid #21262d", borderRadius: 8,
+        padding: "8px 12px", color: "#e6edf3", fontSize: 12,
+        fontFamily: "'Space Mono', monospace", width: "100%" }} />
+  )
+
+  return (
+    <div style={{ animation: "fadeUp 0.4s ease both" }}>
+      <div style={{ background: "#0d1117", border: "1px solid #21262d", borderRadius: 14, padding: "20px 24px", marginBottom: 20 }}>
+        <div style={{ fontSize: 10, color: "#8b949e", letterSpacing: 2, textTransform: "uppercase", marginBottom: 16 }}>Register New Miner</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 10, marginBottom: 12 }}>
+          {inp("ip", "IP Address *")}
+          {inp("name", "Display Name")}
+          <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
+            style={{ background: "#0d1117", border: "1px solid #21262d", borderRadius: 8,
+              padding: "8px 12px", color: "#e6edf3", fontSize: 12, fontFamily: "'Space Mono', monospace" }}>
+            {supported.map(t => <option key={t} value={t}>{TYPE_LABELS[t] || t}</option>)}
+          </select>
+          {inp("owner", "Owner")}
+          {inp("location", "Location")}
+          {inp("notes", "Notes")}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <button onClick={addDevice} disabled={loading} style={{
+            background: "#f7931a22", border: "1px solid #f7931a44", borderRadius: 8,
+            padding: "8px 20px", color: "#f7931a", fontFamily: "'Space Mono', monospace",
+            fontSize: 12, fontWeight: 700, cursor: "pointer" }}>{loading ? "..." : "+ ADD MINER"}</button>
+          {msg && <span style={{ fontSize: 12, color: msg.error ? "#f85149" : "#3fb950", fontFamily: "'Space Mono', monospace" }}>{msg.text}</span>}
+        </div>
+      </div>
+      <div style={{ fontSize: 10, color: "#8b949e", letterSpacing: 2, textTransform: "uppercase", marginBottom: 12 }}>
+        Registered Devices ({devices.length})
+      </div>
+      {devices.map(d => (
+        <div key={d.id} style={{
+          background: "#0d1117", border: `1px solid ${d.active ? "#21262d" : "#f8514922"}`,
+          borderRadius: 12, padding: "14px 18px", marginBottom: 8,
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          flexWrap: "wrap", gap: 8, opacity: d.active ? 1 : 0.5 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 200 }}>
+            <span style={{ width: 8, height: 8, borderRadius: "50%", flexShrink: 0, background: d.active ? "#3fb950" : "#f85149" }} />
+            <div>
+              <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 13, fontWeight: 700, color: "#e6edf3" }}>{d.name || d.ip}</div>
+              <div style={{ fontSize: 11, color: "#8b949e" }}>{d.ip}{d.owner ? ` · ${d.owner}` : ""}{d.location ? ` · ${d.location}` : ""}</div>
+            </div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <TypeBadge type={d.type} />
+            <button onClick={() => toggleActive(d)} style={{
+              background: d.active ? "#f8514918" : "#3fb95018",
+              border: `1px solid ${d.active ? "#f8514944" : "#3fb95044"}`,
+              borderRadius: 6, padding: "3px 10px", fontSize: 11,
+              color: d.active ? "#f85149" : "#3fb950",
+              fontFamily: "'Space Mono', monospace", cursor: "pointer" }}>{d.active ? "PAUSE" : "RESUME"}</button>
+            {!d.active && (
+              <button onClick={() => removeDevice(d.ip)} style={{
+                background: "transparent", border: "1px solid #f8514933",
+                borderRadius: 6, padding: "3px 10px", fontSize: 11,
+                color: "#f85149", fontFamily: "'Space Mono', monospace", cursor: "pointer" }}>REMOVE</button>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+export default function App() {
+  const [status, setStatus]         = useState(null)
+  const [history, setHistory]       = useState([])
+  const [lastPoll, setLastPoll]     = useState(null)
+  const [newMembers, setNewMembers] = useState([])
+  const [addCount, setAddCount]     = useState(1)
+  const [tab, setTab]               = useState("dashboard")
 
   const { origEach } = calcPayouts(CREW, newMembers)
   const totalDevices  = CREW.reduce((s, m) => s + m.devices, 0)
 
-  useEffect(() => {
-    localStorage.setItem("settingsUnlocked", settingsUnlocked ? "true" : "false")
-    localStorage.setItem("settingsPin", settingsPin)
-  }, [settingsUnlocked, settingsPin])
-
-  useEffect(() => {
-    localStorage.setItem("apiBaseUrl", apiBaseUrl)
-  }, [apiBaseUrl])
-
   async function fetchStatus() {
-    try {
-      const res = await fetch(`${apiBaseUrl}/status`)
-      const d   = await res.json()
-      setStatus(d); setLastPoll(new Date()); setBackendOnline(true)
-    } catch {
-      setBackendOnline(false)
-    }
+    try { const r = await fetch(`${API}/status`); const d = await r.json(); setStatus(d); setLastPoll(new Date()) } catch {}
   }
-
-  async function fetchRootInfo() {
-    try {
-      const res = await fetch(`/`)
-      const d = await res.json()
-      setDemoMode(!!d.demoMode)
-    } catch {}
-  }
-
-  async function toggleDemoMode() {
-    try {
-      const res = await fetch(`/api/demo-mode`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ enabled: !demoMode })
-      })
-      const d = await res.json()
-      const enabled = !!d.demoMode
-      setDemoMode(enabled)
-      setToast(enabled ? "Demo mode enabled" : "Live mode enabled")
-      setTimeout(() => setToast(""), 2200)
-      fetchStatus()
-      fetchHistory()
-    } catch {
-      setToast("Failed to switch mode")
-      setTimeout(() => setToast(""), 2200)
-    }
-  }
-
   async function fetchHistory() {
     try {
-      const res = await fetch(`${apiBaseUrl}/history/all?hours=6`)
-      const d   = await res.json()
-      setHistory(d.map(r => ({
-        time: new Date(r.bucket).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        hashrate: parseFloat((r.total_hashrate || 0).toFixed(3)),
-      })))
+      const r = await fetch(`${API}/history/all?hours=6`)
+      const d = await r.json()
+      setHistory(d.map(r => ({ time: new Date(r.bucket).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }), hashrate: parseFloat((r.total_hashrate || 0).toFixed(3)) })))
     } catch {}
   }
 
   useEffect(() => {
-    fetchStatus(); fetchHistory(); fetchRootInfo()
+    fetchStatus(); fetchHistory()
     const si = setInterval(fetchStatus, 30000)
     const hi = setInterval(fetchHistory, 60000)
     return () => { clearInterval(si); clearInterval(hi) }
   }, [])
 
-  useEffect(() => {
-    localStorage.setItem("walletLabel", walletLabel)
-    localStorage.setItem("walletAddress", walletAddress)
-    localStorage.setItem("walletNotes", walletNotes)
-  }, [walletLabel, walletAddress, walletNotes])
+  const btc       = status?.stats?.btc_price_usd || 0
+  const prob30    = parseFloat(status?.stats?.block_hit_prob_30d  || 0)
+  const prob365   = parseFloat(status?.stats?.block_hit_prob_1yr  || 0)
+  const networkEH = status?.stats?.network_hashrate_eh || 700
+  const totalTH   = (status?.cluster?.totalHashrateGhs || 0) / 1000
+  const dailyBTC  = totalTH * 1000 / (networkEH * 1e9) * 144 * 3.125
+  const dailyUSD  = dailyBTC * btc
+  const online    = status?.cluster?.onlineCount || 0
+  const total     = status?.cluster?.totalMiners  || 3
 
-  useEffect(() => {
-    localStorage.setItem("locationName", locationName)
-    localStorage.setItem("locationSubnet", locationSubnet)
-    localStorage.setItem("locationNotes", locationNotes)
-    localStorage.setItem("activeProfile", activeProfile)
-  }, [locationName, locationSubnet, locationNotes, activeProfile])
-
-  useEffect(() => {
-    localStorage.setItem("miner1Name", miner1Name)
-    localStorage.setItem("miner1Ip", miner1Ip)
-    localStorage.setItem("miner2Name", miner2Name)
-    localStorage.setItem("miner2Ip", miner2Ip)
-    localStorage.setItem("miner3Name", miner3Name)
-    localStorage.setItem("miner3Ip", miner3Ip)
-  }, [miner1Name, miner1Ip, miner2Name, miner2Ip, miner3Name, miner3Ip])
-
-  const btc        = status?.stats?.btc_price_usd || 0
-  const prob30     = parseFloat(status?.stats?.block_hit_prob_30d  || 0)
-  const prob365    = parseFloat(status?.stats?.block_hit_prob_1yr  || 0)
-  const totalTH    = (status?.cluster?.totalHashrateGhs || 0) / 1000
-  const networkEH  = status?.stats?.network_hashrate_eh || 700
-  const dailyBTC   = totalTH * 1000 / (networkEH * 1e9) * 144 * 3.125
-  const dailyUSD   = dailyBTC * btc
-  const online     = status?.cluster?.onlineCount || 0
-  const total      = status?.cluster?.totalMiners  || 3
-  const hostName = window.location.hostname
-  const hostPort = window.location.port || "5173"
-  const shareHost =
-    localStorage.getItem("shareHost") ||
-    (hostName === "localhost" || hostName === "127.0.0.1" ? "192.168.1.152" : hostName)
-  const frontendUrl = `${window.location.protocol}//${shareHost}${window.location.port ? `:${hostPort}` : ""}/`
-  const backendRootUrl = `${window.location.protocol}//${shareHost}:3001/`
-
-  const locationProfiles = {
-    "Home A": {
-      locationName: "Home A",
-      locationSubnet: "192.168.1.x",
-      locationNotes: "Primary home network for the Bitaxe cluster.",
-      miners: [
-        { name: "Carbon-01", ip: "192.168.1.100" },
-        { name: "Neon-01", ip: "192.168.1.101" },
-        { name: "Argon-01", ip: "192.168.1.102" }
-      ]
-    },
-    "Home B": {
-      locationName: "Home B",
-      locationSubnet: "192.168.0.x",
-      locationNotes: "Secondary house setup with a different subnet.",
-      miners: [
-        { name: "Carbon-01", ip: "192.168.0.110" },
-        { name: "Neon-01", ip: "192.168.0.111" },
-        { name: "Argon-01", ip: "192.168.0.112" }
-      ]
-    },
-    "Temporary Site": {
-      locationName: "Temporary Site",
-      locationSubnet: "10.0.0.x",
-      locationNotes: "Portable deployment profile for short-term relocation.",
-      miners: [
-        { name: "Carbon-Portable", ip: "10.0.0.20" },
-        { name: "Neon-Portable", ip: "10.0.0.21" },
-        { name: "Argon-Portable", ip: "10.0.0.22" }
-      ]
-    }
-  }
-
-  function applyLocationProfile(profileKey) {
-    const profile = locationProfiles[profileKey]
-    if (!profile) return
-
-    setActiveProfile(profileKey)
-    setLocationName(profile.locationName)
-    setLocationSubnet(profile.locationSubnet)
-    setLocationNotes(profile.locationNotes)
-
-    setMiner1Name(profile.miners[0].name)
-    setMiner1Ip(profile.miners[0].ip)
-    setMiner2Name(profile.miners[1].name)
-    setMiner2Ip(profile.miners[1].ip)
-    setMiner3Name(profile.miners[2].name)
-    setMiner3Ip(profile.miners[2].ip)
-
-    setToast(`Loaded profile: ${profileKey}`)
-    setTimeout(() => setToast(""), 2200)
-  }
-
-  function saveCurrentProfile() {
-    const key = locationName || "Unnamed Profile"
-
-    const updatedProfiles = {
-      ...savedProfiles,
-      [key]: {
-        locationName,
-        locationSubnet,
-        locationNotes,
-        miners: [
-          { name: miner1Name, ip: miner1Ip },
-          { name: miner2Name, ip: miner2Ip },
-          { name: miner3Name, ip: miner3Ip }
-        ]
-      }
-    }
-
-    setSavedProfiles(updatedProfiles)
-    localStorage.setItem("savedProfiles", JSON.stringify(updatedProfiles))
-
-    setToast(`Saved profile: ${key}`)
-    setTimeout(() => setToast(""), 2200)
-  }
-
-  function loadSavedProfile(profileKey) {
-    const profile = savedProfiles[profileKey]
-    if (!profile) return
-
-    setLocationName(profile.locationName || "")
-    setLocationSubnet(profile.locationSubnet || "")
-    setLocationNotes(profile.locationNotes || "")
-
-    setMiner1Name(profile.miners?.[0]?.name || "")
-    setMiner1Ip(profile.miners?.[0]?.ip || "")
-    setMiner2Name(profile.miners?.[1]?.name || "")
-    setMiner2Ip(profile.miners?.[1]?.ip || "")
-    setMiner3Name(profile.miners?.[2]?.name || "")
-    setMiner3Ip(profile.miners?.[2]?.ip || "")
-
-    setToast(`Loaded profile: ${profileKey}`)
-    setTimeout(() => setToast(""), 2200)
-  }
-
-  function deleteSavedProfile(profileKey) {
-    const updated = { ...savedProfiles }
-    delete updated[profileKey]
-    setSavedProfiles(updated)
-    localStorage.setItem("savedProfiles", JSON.stringify(updated))
-    setToast(`Deleted profile: ${profileKey}`)
-    setTimeout(() => setToast(""), 2200)
-  }
-
-  function unlockSettings() {
-    if ((pinInput || "").trim() === settingsPin) {
-      setSettingsUnlocked(true)
-      setPinInput("")
-      setToast("Settings unlocked")
-      setTimeout(() => setToast(""), 2200)
-    } else {
-      setToast("Incorrect PIN")
-      setTimeout(() => setToast(""), 2200)
-    }
-  }
-
-  function lockSettings() {
-    setSettingsUnlocked(false)
-    setToast("Settings locked")
-    setTimeout(() => setToast(""), 2200)
-  }
-
-  function changeSettingsPin() {
-    const nextPin = (newPinInput || "").trim()
-
-    if (nextPin.length < 4) {
-      setToast("PIN must be at least 4 characters")
-      setTimeout(() => setToast(""), 2200)
-      return
-    }
-
-    setSettingsPin(nextPin)
-    setNewPinInput("")
-    setToast("PIN updated")
-    setTimeout(() => setToast(""), 2200)
-  }
-
-  function createNewProfile() {
-    const key = (newProfileName || "").trim()
-    if (!key) {
-      setToast("Enter a new profile name")
-      setTimeout(() => setToast(""), 2200)
-      return
-    }
-
-    if (savedProfiles[key]) {
-      setToast("Profile already exists")
-      setTimeout(() => setToast(""), 2200)
-      return
-    }
-
-    const newProfile = {
-      locationName: key,
-      locationSubnet: "",
-      locationNotes: "",
-      miners: [
-        { name: "", ip: "" },
-        { name: "", ip: "" },
-        { name: "", ip: "" }
-      ]
-    }
-
-    const updated = { ...savedProfiles, [key]: newProfile }
-    setSavedProfiles(updated)
-    localStorage.setItem("savedProfiles", JSON.stringify(updated))
-
-    setLocationName(newProfile.locationName)
-    setLocationSubnet(newProfile.locationSubnet)
-    setLocationNotes(newProfile.locationNotes)
-    setMiner1Name("")
-    setMiner1Ip("")
-    setMiner2Name("")
-    setMiner2Ip("")
-    setMiner3Name("")
-    setMiner3Ip("")
-    setNewProfileName("")
-
-    setToast(`Created profile: ${key}`)
-    setTimeout(() => setToast(""), 2200)
-  }
-
-  function exportConfig() {
-    const payload = {
-      walletLabel,
-      walletAddress,
-      walletNotes,
-      locationName,
-      locationSubnet,
-      locationNotes,
-      miner1Name,
-      miner1Ip,
-      miner2Name,
-      miner2Ip,
-      miner3Name,
-      miner3Ip,
-      savedProfiles,
-      settingsPin
-    }
-
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = "bitaxe-dashboard-config.json"
-    a.click()
-    URL.revokeObjectURL(url)
-
-    setToast("Config exported")
-    setTimeout(() => setToast(""), 2200)
-  }
-
-  function importConfigFromFile(event) {
-    const file = event.target.files?.[0]
-    if (!file) return
-
-    const reader = new FileReader()
-    reader.onload = () => {
-      try {
-        const data = JSON.parse(reader.result)
-
-        setWalletLabel(data.walletLabel || "Main Payout Wallet")
-        setWalletAddress(data.walletAddress || "")
-        setWalletNotes(data.walletNotes || "")
-
-        setLocationName(data.locationName || "Home A")
-        setLocationSubnet(data.locationSubnet || "")
-        setLocationNotes(data.locationNotes || "")
-
-        setMiner1Name(data.miner1Name || "")
-        setMiner1Ip(data.miner1Ip || "")
-        setMiner2Name(data.miner2Name || "")
-        setMiner2Ip(data.miner2Ip || "")
-        setMiner3Name(data.miner3Name || "")
-        setMiner3Ip(data.miner3Ip || "")
-
-        setSavedProfiles(data.savedProfiles || {})
-        setSettingsPin(data.settingsPin || "1234")
-
-        localStorage.setItem("walletLabel", data.walletLabel || "Main Payout Wallet")
-        localStorage.setItem("walletAddress", data.walletAddress || "")
-        localStorage.setItem("walletNotes", data.walletNotes || "")
-
-        localStorage.setItem("locationName", data.locationName || "Home A")
-        localStorage.setItem("locationSubnet", data.locationSubnet || "")
-        localStorage.setItem("locationNotes", data.locationNotes || "")
-
-        localStorage.setItem("miner1Name", data.miner1Name || "")
-        localStorage.setItem("miner1Ip", data.miner1Ip || "")
-        localStorage.setItem("miner2Name", data.miner2Name || "")
-        localStorage.setItem("miner2Ip", data.miner2Ip || "")
-        localStorage.setItem("miner3Name", data.miner3Name || "")
-        localStorage.setItem("miner3Ip", data.miner3Ip || "")
-
-        localStorage.setItem("savedProfiles", JSON.stringify(data.savedProfiles || {}))
-        localStorage.setItem("settingsPin", data.settingsPin || "1234")
-
-        setToast("Config imported")
-        setTimeout(() => setToast(""), 2200)
-      } catch {
-        setToast("Invalid config file")
-        setTimeout(() => setToast(""), 2200)
-      }
-    }
-    reader.readAsText(file)
-    event.target.value = ""
-  }
-
-  async function copyText(value, label) {
-    try {
-      await navigator.clipboard.writeText(value)
-      setToast(`${label} copied`)
-      setTimeout(() => setToast(""), 2200)
-    } catch {
-      setToast(`Failed to copy ${label.toLowerCase()}`)
-      setTimeout(() => setToast(""), 2200)
-    }
-  }
-
-  function resetDemoConfig() {
-    const demoProfiles = {
-      "Home A": {
-        locationName: "Home A",
-        locationSubnet: "192.168.1.x",
-        locationNotes: "Primary home network for the Bitaxe cluster.",
-        miners: [
-          { name: "Carbon-01", ip: "192.168.1.100" },
-          { name: "Neon-01", ip: "192.168.1.101" },
-          { name: "Argon-01", ip: "192.168.1.102" }
-        ]
-      }
-    }
-
-    setWalletLabel("Main Payout Wallet")
-    setWalletAddress("bc1qexamplewalletaddress0000000000000000000")
-    setWalletNotes("Primary BTC payout destination for cluster rewards.")
-    setShowWalletAddress(false)
-
-    setLocationName("Home A")
-    setLocationSubnet("192.168.1.x")
-    setLocationNotes("Primary home network for the Bitaxe cluster.")
-    setNewProfileName("")
-
-    setMiner1Name("Carbon-01")
-    setMiner1Ip("192.168.1.100")
-    setMiner2Name("Neon-01")
-    setMiner2Ip("192.168.1.101")
-    setMiner3Name("Argon-01")
-    setMiner3Ip("192.168.1.102")
-
-    setSavedProfiles(demoProfiles)
-
-    const defaultApi = "https://bitaxe-dashboard.onrender.com/api"
-    setApiBaseUrl(defaultApi)
-    setSettingsPin("1234")
-    setPinInput("")
-    setNewPinInput("")
-    setSettingsUnlocked(true)
-
-    localStorage.setItem("walletLabel", "Main Payout Wallet")
-    localStorage.setItem("walletAddress", "bc1qexamplewalletaddress0000000000000000000")
-    localStorage.setItem("walletNotes", "Primary BTC payout destination for cluster rewards.")
-
-    localStorage.setItem("locationName", "Home A")
-    localStorage.setItem("locationSubnet", "192.168.1.x")
-    localStorage.setItem("locationNotes", "Primary home network for the Bitaxe cluster.")
-
-    localStorage.setItem("miner1Name", "Carbon-01")
-    localStorage.setItem("miner1Ip", "192.168.1.100")
-    localStorage.setItem("miner2Name", "Neon-01")
-    localStorage.setItem("miner2Ip", "192.168.1.101")
-    localStorage.setItem("miner3Name", "Argon-01")
-    localStorage.setItem("miner3Ip", "192.168.1.102")
-
-    localStorage.setItem("savedProfiles", JSON.stringify(demoProfiles))
-    localStorage.setItem("apiBaseUrl", defaultApi)
-    localStorage.setItem("settingsPin", "1234")
-    localStorage.setItem("settingsUnlocked", "true")
-
-    setToast("Demo config restored")
-    setTimeout(() => setToast(""), 2200)
-  }
-
-  const configuredMiners = [
-    { miner_name: miner1Name, miner_ip: miner1Ip },
-    { miner_name: miner2Name, miner_ip: miner2Ip },
-    { miner_name: miner3Name, miner_ip: miner3Ip },
-  ]
-
-  const displayedMiners = (status?.miners || []).map((m, i) => ({
-    ...m,
-    miner_name: configuredMiners[i]?.miner_name || m.miner_name || m.miner_ip,
-    miner_ip: configuredMiners[i]?.miner_ip || m.miner_ip
-  }))
+  const tabs = [["dashboard","Dashboard"],["crew","Crew"],["payout","Payout Calc"],["simulator","Simulator"],["devices","Devices"]]
 
   return (
     <>
@@ -667,215 +581,66 @@ export default function App() {
         @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { background: #060910; }
-        @keyframes fadeUp {
-          from { opacity: 0; transform: translateY(18px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes pulse {
-          0%, 100% { opacity: 1; } 50% { opacity: 0.4; }
-        }
-        @keyframes scanline {
-          0%   { transform: translateY(-100%); }
-          100% { transform: translateY(100vh); }
-        }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse  { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
         ::-webkit-scrollbar { width: 4px; background: #0d1117; }
         ::-webkit-scrollbar-thumb { background: #21262d; border-radius: 2px; }
+        input[type=range] { accent-color: #f7931a; }
+        input::placeholder { color: #484f58; }
+        select option { background: #0d1117; }
       `}</style>
+      <div style={{ minHeight: "100vh", background: "#060910", color: "#e6edf3", fontFamily: "'DM Sans', sans-serif",
+        backgroundImage: `radial-gradient(ellipse 80% 50% at 50% -20%, #f7931a08 0%, transparent 60%), radial-gradient(ellipse 40% 30% at 80% 80%, #58a6ff06 0%, transparent 50%)` }}>
+        <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0,
+          backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 2px, #ffffff03 2px, #ffffff03 4px)" }} />
+        <div style={{ maxWidth: 1100, margin: "0 auto", padding: "28px 20px", position: "relative", zIndex: 1 }}>
 
-      <div style={{
-        minHeight: "100vh", background: "#060910", color: "#e6edf3",
-        fontFamily: "'DM Sans', sans-serif",
-        backgroundImage: `
-          radial-gradient(ellipse 80% 50% at 50% -20%, #f7931a08 0%, transparent 60%),
-          radial-gradient(ellipse 40% 30% at 80% 80%, #58a6ff06 0%, transparent 50%)
-        `,
-      }}>
-        {toast && (
-          <div style={{
-            position: "fixed",
-            top: 18,
-            right: 18,
-            zIndex: 50,
-            background: "#161b22",
-            border: "1px solid #30363d",
-            color: "#e6edf3",
-            borderRadius: 10,
-            padding: "10px 14px",
-            fontSize: 12,
-            fontWeight: 700,
-            fontFamily: "'Space Mono', monospace",
-            boxShadow: "0 8px 30px rgba(0,0,0,0.35)"
-          }}>
-            {toast}
-          </div>
-        )}
-        {/* Scanline overlay */}
-        <div style={{
-          position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0,
-          backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 2px, #ffffff03 2px, #ffffff03 4px)",
-        }} />
-
-        <div style={{
-          maxWidth: 1100,
-          margin: "0 auto",
-          padding: isMobile ? "18px 12px" : "28px 20px",
-          position: "relative",
-          zIndex: 1
-        }}>
-
-          {/* Header */}
-          <div style={{
-            display: "flex",
-            flexDirection: isMobile ? "column" : "row",
-            alignItems: isMobile ? "stretch" : "flex-start",
-            justifyContent: "space-between",
-            gap: isMobile ? 14 : 0,
-            marginBottom: 32,
-            animation: "fadeUp 0.4s ease both",
-          }}>
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
-                {demoMode && (
-                  <div style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 8,
-                    background: "#58a6ff18",
-                    border: "1px solid #58a6ff44",
-                    color: "#58a6ff",
-                    borderRadius: 999,
-                    padding: "4px 10px",
-                    fontSize: 11,
-                    fontWeight: 700,
-                    fontFamily: "'Space Mono', monospace",
-                    letterSpacing: 1
-                  }}>
-                    DEMO MODE
-                  </div>
-                )}
-                <button onClick={toggleDemoMode} style={{
-                  background: demoMode ? "#f8514918" : "#3fb95018",
-                  border: `1px solid ${demoMode ? "#f8514944" : "#3fb95044"}`,
-                  color: demoMode ? "#f85149" : "#3fb950",
-                  borderRadius: 999,
-                  padding: "4px 10px",
-                  fontSize: 11,
-                  fontWeight: 700,
-                  fontFamily: "'Space Mono', monospace",
-                  letterSpacing: 1,
-                  cursor: "pointer"
-                }}>
-                  {demoMode ? "SWITCH TO LIVE" : "SWITCH TO DEMO"}
-                </button>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
-                <div style={{
-                  width: 38, height: 38, borderRadius: 10,
-                  background: "linear-gradient(135deg, #f7931a, #e67e00)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 20, boxShadow: "0 0 20px #f7931a44",
-                }}>⚡</div>
-                <div>
-                  <div style={{
-                    fontFamily: "'Space Mono', monospace", fontSize: 18, fontWeight: 700,
-                    color: "#f7931a", letterSpacing: "-0.5px",
-                  }}>BITAXE CLUSTER</div>
-                  <div style={{ fontSize: 11, color: "#8b949e", letterSpacing: 2, textTransform: "uppercase" }}>
-                    Carbon · Neon · Argon
-                  </div>
-                </div>
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 32, animation: "fadeUp 0.4s ease both" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ width: 38, height: 38, borderRadius: 10, background: "linear-gradient(135deg, #f7931a, #e67e00)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>⚡</div>
+              <div>
+                <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 18, fontWeight: 700, color: "#f7931a" }}>BITAXE CLUSTER</div>
+                <div style={{ fontSize: 11, color: "#8b949e", letterSpacing: 2, textTransform: "uppercase" }}>Carbon · Neon · Argon</div>
               </div>
             </div>
             <div style={{ textAlign: "right" }}>
-              <div style={{
-                display: "inline-flex", alignItems: "center", gap: 7,
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 7,
                 background: online === total ? "#3fb95018" : "#f8514918",
                 border: `1px solid ${online === total ? "#3fb95044" : "#f8514944"}`,
                 borderRadius: 20, padding: "5px 14px", fontSize: 12, fontWeight: 600,
-                color: online === total ? "#3fb950" : "#f85149",
-              }}>
-                <span style={{
-                  width: 7, height: 7, borderRadius: "50%",
-                  background: online === total ? "#3fb950" : "#f85149",
-                  animation: online > 0 ? "pulse 2s infinite" : "none",
-                }} />
+                color: online === total ? "#3fb950" : "#f85149" }}>
+                <span style={{ width: 7, height: 7, borderRadius: "50%", background: online === total ? "#3fb950" : "#f85149", animation: online > 0 ? "pulse 2s infinite" : "none" }} />
                 {online}/{total} ONLINE
               </div>
               <div style={{ fontSize: 11, color: "#8b949e", marginTop: 6 }}>
                 {lastPoll ? `synced ${lastPoll.toLocaleTimeString()}` : "connecting..."}
                 {btc > 0 && <span style={{ color: "#f7931a", marginLeft: 8 }}>₿ ${btc.toLocaleString()}</span>}
-                <span style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 6,
-                  marginLeft: 8,
-                  color: backendOnline ? "#3fb950" : "#f85149"
-                }}>
-                  <span style={{
-                    width: 7,
-                    height: 7,
-                    borderRadius: "50%",
-                    background: backendOnline ? "#3fb950" : "#f85149"
-                  }} />
-                  {backendOnline ? "backend online" : "backend offline"}
-                </span>
               </div>
             </div>
           </div>
 
-          {/* Nav tabs */}
-          <div style={{
-            display: "flex",
-            gap: 6,
-            flexWrap: "wrap",
-            marginBottom: 28,
-            animation: "fadeUp 0.4s ease 0.05s both"
-          }}>
-            {[
-  ["dashboard", "Dashboard"],
-  ["crew", "Crew"],
-  ["payout", "Payout Calc"],
-  ["settings", "Settings"]
-].map(([id, label]) => (
+          <div style={{ display: "flex", gap: 4, marginBottom: 28, flexWrap: "wrap", animation: "fadeUp 0.4s ease 0.05s both" }}>
+            {tabs.map(([id, label]) => (
               <button key={id} onClick={() => setTab(id)} style={{
                 background: tab === id ? "#f7931a18" : "transparent",
                 border: `1px solid ${tab === id ? "#f7931a44" : "#21262d"}`,
                 borderRadius: 8, padding: "6px 16px", fontSize: 13, fontWeight: 600,
                 color: tab === id ? "#f7931a" : "#8b949e", cursor: "pointer",
-                fontFamily: "'Space Mono', monospace", transition: "all 0.2s",
-              }}>{label}</button>
+                fontFamily: "'Space Mono', monospace", transition: "all 0.2s" }}>{label}</button>
             ))}
           </div>
 
-          {/* ── DASHBOARD TAB ─────────────────────────────────────────────── */}
           {tab === "dashboard" && <>
-
-            {/* Stat cards */}
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fit, minmax(210px, 1fr))",
-              gap: 14,
-              marginBottom: 24
-            }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 14, marginBottom: 24 }}>
               {[
                 { label: "CLUSTER HASHRATE", value: (status?.cluster?.totalHashrateGhs || 0).toFixed(2), suffix: " GH/s", color: "#f7931a", delay: 0.1 },
                 { label: "DAILY EARNINGS",   value: dailyUSD.toFixed(4), prefix: "$", color: "#3fb950", delay: 0.15 },
                 { label: "TOTAL EARNED",     value: (status?.cumulative?.total_usd || 0).toFixed(2), prefix: "$", color: "#58a6ff", delay: 0.2 },
-                { label: "NETWORK",          value: (networkEH).toFixed(0), suffix: " EH/s", color: "#8b949e", delay: 0.25 },
+                { label: "NETWORK",          value: networkEH.toFixed(0), suffix: " EH/s", color: "#8b949e", delay: 0.25 },
               ].map(({ label, value, prefix, suffix, color, delay }) => (
-                <div key={label} style={{
-                  background: "#0d1117", border: "1px solid #21262d", borderRadius: 14,
-                  padding: "18px 20px", animation: `fadeUp 0.5s ease ${delay}s both`,
-                  position: "relative", overflow: "hidden",
-                }}>
-                  <div style={{
-                    position: "absolute", inset: 0,
-                    background: `radial-gradient(ellipse at top left, ${color}08 0%, transparent 60%)`,
-                    pointerEvents: "none",
-                  }} />
-                  <div style={{ fontSize: 10, color: "#8b949e", letterSpacing: 2, marginBottom: 10, textTransform: "uppercase" }}>
-                    {label}
-                  </div>
+                <div key={label} style={{ background: "#0d1117", border: "1px solid #21262d", borderRadius: 14, padding: "18px 20px", animation: `fadeUp 0.5s ease ${delay}s both`, position: "relative", overflow: "hidden" }}>
+                  <div style={{ position: "absolute", inset: 0, background: `radial-gradient(ellipse at top left, ${color}08 0%, transparent 60%)`, pointerEvents: "none" }} />
+                  <div style={{ fontSize: 10, color: "#8b949e", letterSpacing: 2, marginBottom: 10, textTransform: "uppercase" }}>{label}</div>
                   <div style={{ fontSize: 26, lineHeight: 1 }}>
                     <Counter value={parseFloat(value) || 0} prefix={prefix || ""} suffix={suffix || ""} color={color}
                       decimals={value.toString().includes(".") ? value.toString().split(".")[1].length : 0} />
@@ -883,290 +648,22 @@ export default function App() {
                 </div>
               ))}
             </div>
-
-            {/* System status */}
-            <div style={{
-              background: "#0d1117", border: "1px solid #21262d", borderRadius: 14,
-              padding: "18px 20px", marginBottom: 24,
-              animation: "fadeUp 0.5s ease 0.28s both",
-            }}>
-              <div style={{ fontSize: 10, color: "#8b949e", letterSpacing: 2, textTransform: "uppercase", marginBottom: 14 }}>
-                System Status
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
-                <div style={{
-                  background: "#161b22", border: "1px solid #21262d", borderRadius: 10,
-                  padding: "12px 14px"
-                }}>
-                  <div style={{ fontSize: 10, color: "#8b949e", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>
-                    Backend
-                  </div>
-                  <div style={{ color: "#3fb950", fontFamily: "'Space Mono', monospace", fontWeight: 700, fontSize: 16 }}>
-                    ONLINE
-                  </div>
-                </div>
-
-                <div style={{
-                  background: "#161b22", border: "1px solid #21262d", borderRadius: 10,
-                  padding: "12px 14px"
-                }}>
-                  <div style={{ fontSize: 10, color: "#8b949e", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>
-                    Data Mode
-                  </div>
-                  <div style={{
-                    color: demoMode ? "#58a6ff" : "#f7931a",
-                    fontFamily: "'Space Mono', monospace", fontWeight: 700, fontSize: 16
-                  }}>
-                    {demoMode ? "DEMO" : "LIVE"}
-                  </div>
-                </div>
-
-                <div style={{
-                  background: "#161b22", border: "1px solid #21262d", borderRadius: 10,
-                  padding: "12px 14px"
-                }}>
-                  <div style={{ fontSize: 10, color: "#8b949e", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>
-                    Last Sync
-                  </div>
-                  <div style={{ color: "#e6edf3", fontFamily: "'Space Mono', monospace", fontWeight: 700, fontSize: 16 }}>
-                    {lastPoll ? lastPoll.toLocaleTimeString() : "—"}
-                  </div>
-                </div>
-
-                <div style={{
-                  background: "#161b22", border: "1px solid #21262d", borderRadius: 10,
-                  padding: "12px 14px"
-                }}>
-                  <div style={{ fontSize: 10, color: "#8b949e", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>
-                    API
-                  </div>
-                  <div style={{ color: "#e6edf3", fontFamily: "'Space Mono', monospace", fontWeight: 700, fontSize: 16 }}>
-                    /api
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Share / Access */}
-            <div style={{
-              background: "#0d1117", border: "1px solid #21262d", borderRadius: 14,
-              padding: "18px 20px", marginBottom: 24,
-              animation: "fadeUp 0.5s ease 0.29s both",
-            }}>
-              <div style={{ fontSize: 10, color: "#8b949e", letterSpacing: 2, textTransform: "uppercase", marginBottom: 14 }}>
-                Share / Access
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
-                <div style={{
-                  background: "#161b22", border: "1px solid #21262d", borderRadius: 10,
-                  padding: "12px 14px"
-                }}>
-                  <div style={{ fontSize: 10, color: "#8b949e", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>
-                    Frontend URL
-                  </div>
-                  <div style={{ color: "#e6edf3", fontFamily: "'Space Mono', monospace", fontSize: 12, wordBreak: "break-all", marginBottom: 10 }}>
-                    {frontendUrl}
-                  </div>
-                  <button
-                    onClick={() => copyText(frontendUrl, "Frontend URL")}
-                    style={{
-                      background: "#58a6ff18",
-                      border: "1px solid #58a6ff44",
-                      color: "#58a6ff",
-                      borderRadius: 999,
-                      padding: "6px 12px",
-                      fontSize: 11,
-                      fontWeight: 700,
-                      fontFamily: "'Space Mono', monospace",
-                      cursor: "pointer"
-                    }}
-                  >
-                    COPY FRONTEND URL
-                  </button>
-                </div>
-
-                <div style={{
-                  background: "#161b22", border: "1px solid #21262d", borderRadius: 10,
-                  padding: "12px 14px"
-                }}>
-                  <div style={{ fontSize: 10, color: "#8b949e", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>
-                    Backend URL
-                  </div>
-                  <div style={{ color: "#e6edf3", fontFamily: "'Space Mono', monospace", fontSize: 12, wordBreak: "break-all", marginBottom: 10 }}>
-                    {backendRootUrl}
-                  </div>
-                  <button
-                    onClick={() => copyText(backendRootUrl, "Backend URL")}
-                    style={{
-                      background: "#f7931a18",
-                      border: "1px solid #f7931a44",
-                      color: "#f7931a",
-                      borderRadius: 999,
-                      padding: "6px 12px",
-                      fontSize: 11,
-                      fontWeight: 700,
-                      fontFamily: "'Space Mono', monospace",
-                      cursor: "pointer"
-                    }}
-                  >
-                    COPY BACKEND URL
-                  </button>
-                </div>
-
-                <div style={{
-                  background: "#161b22", border: "1px solid #21262d", borderRadius: 10,
-                  padding: "12px 14px"
-                }}>
-                  <div style={{ fontSize: 10, color: "#8b949e", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>
-                    Device Host
-                  </div>
-                  <div style={{ color: "#e6edf3", fontFamily: "'Space Mono', monospace", fontSize: 12 }}>
-                    {hostName}
-                  </div>
-                </div>
-
-                <div style={{
-                  background: "#161b22", border: "1px solid #21262d", borderRadius: 10,
-                  padding: "12px 14px"
-                }}>
-                  <div style={{ fontSize: 10, color: "#8b949e", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>
-                    Quick Tip
-                  </div>
-                  <div style={{ color: "#8b949e", fontSize: 12, lineHeight: 1.5 }}>
-                    Open the frontend URL on a phone connected to the same Wi-Fi network.
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* QR Access */}
-            <div style={{
-              background: "#0d1117", border: "1px solid #21262d", borderRadius: 14,
-              padding: "18px 20px", marginBottom: 24,
-              animation: "fadeUp 0.5s ease 0.295s both",
-            }}>
-              <div style={{ fontSize: 10, color: "#8b949e", letterSpacing: 2, textTransform: "uppercase", marginBottom: 14 }}>
-                QR Access
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fit, minmax(220px, 1fr))", gap: 16, alignItems: "center" }}>
-                <div style={{
-                  background: "#161b22",
-                  border: "1px solid #21262d",
-                  borderRadius: 12,
-                  padding: "16px",
-                  display: "flex",
-                  justifyContent: "center"
-                }}>
-                  <QRCodeSVG
-                    value={frontendUrl}
-                    size={180}
-                    bgColor="#ffffff"
-                    fgColor="#000000"
-                    includeMargin={true}
-                  />
-                </div>
-                <div>
-                  <div style={{ color: "#e6edf3", fontSize: 14, marginBottom: 10 }}>
-                    Scan this with a phone on the same Wi-Fi to open the dashboard.
-                  </div>
-                  <div style={{
-                    color: "#8b949e",
-                    fontSize: 12,
-                    lineHeight: 1.6,
-                    marginBottom: 10
-                  }}>
-                    Best for quick setup when sharing the app locally without typing the full address.
-                  </div>
-                  <div style={{
-                    color: "#e6edf3",
-                    fontFamily: "'Space Mono', monospace",
-                    fontSize: 12,
-                    wordBreak: "break-all"
-                  }}>
-                    {frontendUrl}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Install App */}
-            <div style={{
-              background: "#0d1117", border: "1px solid #21262d", borderRadius: 14,
-              padding: "18px 20px", marginBottom: 24,
-              animation: "fadeUp 0.5s ease 0.297s both",
-            }}>
-              <div style={{ fontSize: 10, color: "#8b949e", letterSpacing: 2, textTransform: "uppercase", marginBottom: 14 }}>
-                Install App
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12 }}>
-                <div style={{
-                  background: "#161b22",
-                  border: "1px solid #21262d",
-                  borderRadius: 10,
-                  padding: "12px 14px"
-                }}>
-                  <div style={{ color: "#e6edf3", fontSize: 14, marginBottom: 6 }}>
-                    iPhone / iPad
-                  </div>
-                  <div style={{ color: "#8b949e", fontSize: 12, lineHeight: 1.6 }}>
-                    Open this app in Safari, tap the <b>Share</b> button, then choose <b>Add to Home Screen</b>.
-                  </div>
-                </div>
-
-                <div style={{
-                  background: "#161b22",
-                  border: "1px solid #21262d",
-                  borderRadius: 10,
-                  padding: "12px 14px"
-                }}>
-                  <div style={{ color: "#e6edf3", fontSize: 14, marginBottom: 6 }}>
-                    Android
-                  </div>
-                  <div style={{ color: "#8b949e", fontSize: 12, lineHeight: 1.6 }}>
-                    Open this app in Chrome, tap the browser menu, then choose <b>Install app</b> or <b>Add to Home screen</b>.
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Probability arcs */}
-            <div style={{
-              background: "#0d1117", border: "1px solid #21262d", borderRadius: 14,
-              padding: "20px 24px", marginBottom: 24,
-              animation: "fadeUp 0.5s ease 0.3s both",
-            }}>
-              <div style={{ fontSize: 10, color: "#8b949e", letterSpacing: 2, textTransform: "uppercase", marginBottom: 16 }}>
-                Block Hit Probability
-              </div>
+            <div style={{ background: "#0d1117", border: "1px solid #21262d", borderRadius: 14, padding: "20px 24px", marginBottom: 24, animation: "fadeUp 0.5s ease 0.3s both" }}>
+              <div style={{ fontSize: 10, color: "#8b949e", letterSpacing: 2, textTransform: "uppercase", marginBottom: 16 }}>Block Hit Probability</div>
               <div style={{ display: "flex", justifyContent: "space-around", flexWrap: "wrap", gap: 8 }}>
                 <ProbArc pct={prob30}  label="30 Days"  color="#f7931a" />
                 <ProbArc pct={prob365} label="365 Days" color="#3fb950" />
                 <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", minWidth: 160 }}>
-                  <div style={{
-                    background: "#3fb95015", border: "1px solid #3fb95033",
-                    borderRadius: 10, padding: "14px 16px",
-                  }}>
+                  <div style={{ background: "#3fb95015", border: "1px solid #3fb95033", borderRadius: 10, padding: "14px 16px" }}>
                     <div style={{ fontSize: 11, color: "#8b949e", marginBottom: 6 }}>If block hit →</div>
-                    <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 20, color: "#3fb950", fontWeight: 700 }}>
-                      ~$100K each
-                    </div>
-                    <div style={{ fontSize: 11, color: "#8b949e", marginTop: 4 }}>
-                      3.125 BTC ÷ Carbon · Neon · Argon
-                    </div>
+                    <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 20, color: "#3fb950", fontWeight: 700 }}>~$100K each</div>
+                    <div style={{ fontSize: 11, color: "#8b949e", marginTop: 4 }}>3.125 BTC ÷ Carbon · Neon · Argon</div>
                   </div>
                 </div>
               </div>
             </div>
-
-            {/* Hashrate chart */}
-            <div style={{
-              background: "#0d1117", border: "1px solid #21262d", borderRadius: 14,
-              padding: "20px 20px 12px", marginBottom: 24,
-              animation: "fadeUp 0.5s ease 0.35s both",
-            }}>
-              <div style={{ fontSize: 10, color: "#8b949e", letterSpacing: 2, textTransform: "uppercase", marginBottom: 16 }}>
-                Cluster Hashrate — Last 6 Hours
-              </div>
+            <div style={{ background: "#0d1117", border: "1px solid #21262d", borderRadius: 14, padding: "20px 20px 12px", marginBottom: 24, animation: "fadeUp 0.5s ease 0.35s both" }}>
+              <div style={{ fontSize: 10, color: "#8b949e", letterSpacing: 2, textTransform: "uppercase", marginBottom: 16 }}>Cluster Hashrate — Last 6 Hours</div>
               {history.length > 0 ? (
                 <ResponsiveContainer width="100%" height={180}>
                   <AreaChart data={history}>
@@ -1180,833 +677,88 @@ export default function App() {
                     <XAxis dataKey="time" stroke="#8b949e" tick={{ fontSize: 10, fontFamily: "Space Mono" }} />
                     <YAxis stroke="#8b949e" tick={{ fontSize: 10, fontFamily: "Space Mono" }} unit=" GH/s" />
                     <Tooltip content={<ChartTip />} />
-                    <Area type="monotone" dataKey="hashrate" name="Hashrate"
-                      stroke="#f7931a" strokeWidth={2} fill="url(#hg)" dot={false} />
+                    <Area type="monotone" dataKey="hashrate" name="Hashrate" stroke="#f7931a" strokeWidth={2} fill="url(#hg)" dot={false} />
                   </AreaChart>
                 </ResponsiveContainer>
               ) : (
-                <div style={{
-                  height: 180, display: "flex", alignItems: "center", justifyContent: "center",
-                  color: "#8b949e", fontSize: 13, fontStyle: "italic",
-                }}>Waiting for miners to connect...</div>
+                <div style={{ height: 180, display: "flex", alignItems: "center", justifyContent: "center", color: "#8b949e", fontSize: 13, fontStyle: "italic" }}>Waiting for miners to connect...</div>
               )}
             </div>
-
-            {/* Individual miners */}
             <div style={{ animation: "fadeUp 0.5s ease 0.4s both" }}>
-              <div style={{ fontSize: 10, color: "#8b949e", letterSpacing: 2, textTransform: "uppercase", marginBottom: 12 }}>
-                Individual Miners
-              </div>
-              {displayedMiners.map((m, i) => (
-                <div key={m.miner_ip} style={{
-                  background: "#0d1117", border: `1px solid ${m.is_online ? "#21262d" : "#f8514922"}`,
-                  borderRadius: 12, padding: "13px 18px", marginBottom: 8,
-                  display: "flex", alignItems: "center", justifyContent: "space-between",
-                  flexWrap: "wrap", gap: 8,
-                }}>
+              <div style={{ fontSize: 10, color: "#8b949e", letterSpacing: 2, textTransform: "uppercase", marginBottom: 12 }}>Individual Miners</div>
+              {status?.miners?.map(m => (
+                <div key={m.miner_ip} style={{ background: "#0d1117", border: `1px solid ${m.is_online ? "#21262d" : "#f8514922"}`, borderRadius: 12, padding: "13px 18px", marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <span style={{
-                      width: 8, height: 8, borderRadius: "50%",
-                      background: m.is_online ? "#3fb950" : "#f85149",
-                      animation: m.is_online ? "pulse 2s infinite" : "none",
-                    }} />
-                    <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 13, fontWeight: 700 }}>
-                      {m.miner_name || m.miner_ip}
-                    </span>
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: m.is_online ? "#3fb950" : "#f85149", animation: m.is_online ? "pulse 2s infinite" : "none" }} />
+                    <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 13, fontWeight: 700 }}>{m.miner_name || m.miner_ip}</span>
                     <span style={{ color: "#8b949e", fontSize: 11 }}>{m.miner_ip}</span>
+                    <TypeBadge type={m.miner_type || "bitaxe"} />
                   </div>
                   <div style={{ display: "flex", gap: 18, fontSize: 12 }}>
-                    <span>⚡ <b style={{ color: "#f7931a", fontFamily: "Space Mono, monospace" }}>
-                      {m.hashrate_ghs?.toFixed(2) || "—"} GH/s
-                    </b></span>
-                    <span>🌡 <b style={{ color: m.temp_c > 70 ? "#f85149" : "#e6edf3" }}>
-                      {m.temp_c?.toFixed(0) || "—"}°C
-                    </b></span>
+                    <span>⚡ <b style={{ color: "#f7931a", fontFamily: "Space Mono, monospace" }}>{m.hashrate_ghs?.toFixed(2) || "—"} GH/s</b></span>
+                    <span>🌡 <b style={{ color: m.temp_c > 70 ? "#f85149" : "#e6edf3" }}>{m.temp_c?.toFixed(0) || "—"}°C</b></span>
                     <span style={{ color: "#8b949e" }}>{m.power_watts?.toFixed(1) || "—"}W</span>
                   </div>
-                  <span style={{
-                    background: m.is_online ? "#3fb95018" : "#f8514918",
-                    color: m.is_online ? "#3fb950" : "#f85149",
-                    border: `1px solid ${m.is_online ? "#3fb95044" : "#f8514944"}`,
-                    borderRadius: 6, padding: "2px 10px", fontSize: 11, fontWeight: 700,
-                    fontFamily: "'Space Mono', monospace",
-                  }}>{m.is_online ? "ONLINE" : "OFFLINE"}</span>
+                  <span style={{ background: m.is_online ? "#3fb95018" : "#f8514918", color: m.is_online ? "#3fb950" : "#f85149", border: `1px solid ${m.is_online ? "#3fb95044" : "#f8514944"}`, borderRadius: 6, padding: "2px 10px", fontSize: 11, fontWeight: 700, fontFamily: "'Space Mono', monospace" }}>{m.is_online ? "ONLINE" : "OFFLINE"}</span>
                 </div>
               ))}
             </div>
           </>}
 
-          {/* ── CREW TAB ──────────────────────────────────────────────────── */}
           {tab === "crew" && <>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16, marginBottom: 28 }}>
-              {CREW.map((m, i) => (
-                <CrewCard key={m.id} member={m} payout={origEach}
-                  totalDevices={totalDevices + newMembers.reduce((s, n) => s + n.devices, 0)}
-                  animDelay={i * 0.08} />
-              ))}
+              {CREW.map((m, i) => <CrewCard key={m.id} member={m} payout={origEach} totalDevices={totalDevices + newMembers.reduce((s, n) => s + n.devices, 0)} animDelay={i * 0.08} />)}
             </div>
-            <div style={{
-              background: "#0d1117", border: "1px solid #21262d",
-              borderRadius: 14, padding: "20px 24px",
-              animation: "fadeUp 0.5s ease 0.3s both",
-            }}>
-              <div style={{ fontSize: 10, color: "#8b949e", letterSpacing: 2, textTransform: "uppercase", marginBottom: 14 }}>
-                Crew Agreement
-              </div>
-              {[
-                "All block payouts split equally 3 ways between Carbon, Neon, and Argon",
-                "New members pay 20% tax on their proportional share back to original crew",
-                "Devices can be hosted at any location — ownership tracked by wallet address",
-                "Anyone who joins signs a written agreement before hardware is purchased",
-              ].map((rule, i) => (
-                <div key={i} style={{
-                  display: "flex", gap: 12, alignItems: "flex-start",
-                  padding: "10px 0", borderBottom: i < 3 ? "1px solid #21262d" : "none",
-                }}>
-                  <span style={{ color: "#f7931a", fontFamily: "Space Mono, monospace", fontSize: 12, minWidth: 20 }}>
-                    {String(i + 1).padStart(2, "0")}
-                  </span>
+            <div style={{ background: "#0d1117", border: "1px solid #21262d", borderRadius: 14, padding: "20px 24px" }}>
+              <div style={{ fontSize: 10, color: "#8b949e", letterSpacing: 2, textTransform: "uppercase", marginBottom: 14 }}>Crew Agreement</div>
+              {["All block payouts split equally 3 ways between Carbon, Neon, and Argon","New members pay 20% tax on their proportional share back to original crew","Devices can be hosted at any location — ownership tracked by wallet address","Anyone who joins signs a written agreement before hardware is purchased"].map((rule, i) => (
+                <div key={i} style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: "10px 0", borderBottom: i < 3 ? "1px solid #21262d" : "none" }}>
+                  <span style={{ color: "#f7931a", fontFamily: "Space Mono, monospace", fontSize: 12, minWidth: 20 }}>{String(i+1).padStart(2,"0")}</span>
                   <span style={{ fontSize: 13, color: "#e6edf3", lineHeight: 1.5 }}>{rule}</span>
                 </div>
               ))}
             </div>
           </>}
 
-          {/* ── PAYOUT CALC TAB ───────────────────────────────────────────── */}
           {tab === "payout" && <>
-            <div style={{
-              background: "#0d1117", border: "1px solid #21262d",
-              borderRadius: 14, padding: "20px 24px", marginBottom: 20,
-              animation: "fadeUp 0.5s ease 0.1s both",
-            }}>
-              <div style={{ fontSize: 10, color: "#8b949e", letterSpacing: 2, textTransform: "uppercase", marginBottom: 16 }}>
-                Add New Members (Taxed 20%)
-              </div>
+            <div style={{ background: "#0d1117", border: "1px solid #21262d", borderRadius: 14, padding: "20px 24px", marginBottom: 20 }}>
+              <div style={{ fontSize: 10, color: "#8b949e", letterSpacing: 2, textTransform: "uppercase", marginBottom: 16 }}>Add New Members (Taxed 20%)</div>
               <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 14, flexWrap: "wrap" }}>
-                <input type="number" min={1} max={10} value={addCount}
-                  onChange={e => setAddCount(parseInt(e.target.value) || 1)}
-                  style={{
-                    width: 70, background: "#161b22", border: "1px solid #21262d",
-                    borderRadius: 8, padding: "8px 12px", color: "#e6edf3",
-                    fontFamily: "'Space Mono', monospace", fontSize: 13,
-                  }} />
+                <input type="number" min={1} max={10} value={addCount} onChange={e => setAddCount(parseInt(e.target.value)||1)}
+                  style={{ width: 70, background: "#161b22", border: "1px solid #21262d", borderRadius: 8, padding: "8px 12px", color: "#e6edf3", fontFamily: "'Space Mono', monospace", fontSize: 13 }} />
                 <span style={{ color: "#8b949e", fontSize: 13 }}>devices for new member</span>
                 <button onClick={() => setNewMembers(p => [...p, { id: Date.now(), devices: addCount }])}
-                  style={{
-                    background: "#f7931a22", border: "1px solid #f7931a44",
-                    borderRadius: 8, padding: "8px 18px", color: "#f7931a",
-                    fontFamily: "'Space Mono', monospace", fontSize: 12, fontWeight: 700,
-                    cursor: "pointer",
-                  }}>+ ADD</button>
-                {newMembers.length > 0 && (
-                  <button onClick={() => setNewMembers([])} style={{
-                    background: "#f8514918", border: "1px solid #f8514944",
-                    borderRadius: 8, padding: "8px 14px", color: "#f85149",
-                    fontFamily: "'Space Mono', monospace", fontSize: 12, cursor: "pointer",
-                  }}>CLEAR</button>
-                )}
+                  style={{ background: "#f7931a22", border: "1px solid #f7931a44", borderRadius: 8, padding: "8px 18px", color: "#f7931a", fontFamily: "'Space Mono', monospace", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>+ ADD</button>
+                {newMembers.length > 0 && <button onClick={() => setNewMembers([])} style={{ background: "#f8514918", border: "1px solid #f8514944", borderRadius: 8, padding: "8px 14px", color: "#f85149", fontFamily: "'Space Mono', monospace", fontSize: 12, cursor: "pointer" }}>CLEAR</button>}
               </div>
-              {newMembers.length > 0 && (
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  {newMembers.map((m, i) => (
-                    <span key={m.id} style={{
-                      background: "#bc8cff18", border: "1px solid #bc8cff44",
-                      borderRadius: 6, padding: "4px 10px", fontSize: 12,
-                      color: "#bc8cff", fontFamily: "Space Mono, monospace",
-                    }}>Member {i + 1}: {m.devices} device{m.devices > 1 ? "s" : ""}</span>
-                  ))}
-                </div>
-              )}
+              {newMembers.length > 0 && <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>{newMembers.map((m,i) => <span key={m.id} style={{ background: "#bc8cff18", border: "1px solid #bc8cff44", borderRadius: 6, padding: "4px 10px", fontSize: 12, color: "#bc8cff", fontFamily: "Space Mono, monospace" }}>Member {i+1}: {m.devices} device{m.devices>1?"s":""}</span>)}</div>}
             </div>
-
-            {/* Payout breakdown */}
             {(() => {
               const { origEach, newShare } = calcPayouts(CREW, newMembers)
-              const allDevices = totalDevices + newMembers.reduce((s, m) => s + m.devices, 0)
-              const newEach = newMembers.length > 0
-                ? newShare / newMembers.length : 0
+              const newEach = newMembers.length > 0 ? newShare / newMembers.length : 0
               return (
-                <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 14, animation: "fadeUp 0.5s ease 0.2s both" }}>
-                  <div style={{
-                    border: "1px solid #3fb95033",
-                    borderRadius: 14, padding: "22px 24px",
-                    background: "linear-gradient(135deg, #0d1117, #3fb95008)",
-                  }}>
-                    <div style={{ fontSize: 10, color: "#8b949e", letterSpacing: 2, textTransform: "uppercase", marginBottom: 10 }}>
-                      Carbon · Neon · Argon
-                    </div>
-                    <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 32, fontWeight: 700, color: "#3fb950" }}>
-                      ${Math.round(origEach).toLocaleString()}
-                    </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                  <div style={{ background: "linear-gradient(135deg, #0d1117, #3fb95008)", border: "1px solid #3fb95033", borderRadius: 14, padding: "22px 24px" }}>
+                    <div style={{ fontSize: 10, color: "#8b949e", letterSpacing: 2, textTransform: "uppercase", marginBottom: 10 }}>Carbon · Neon · Argon</div>
+                    <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 32, fontWeight: 700, color: "#3fb950" }}>${Math.round(origEach).toLocaleString()}</div>
                     <div style={{ fontSize: 12, color: "#8b949e", marginTop: 6 }}>each — always equal split</div>
-                    <div style={{ fontSize: 11, color: "#3fb95088", marginTop: 10 }}>
-                      {totalDevices} devices · {(totalDevices / allDevices * 100).toFixed(1)}% of cluster
-                      {newMembers.length > 0 && ` + 20% tax from ${newMembers.length} new member${newMembers.length > 1 ? "s" : ""}`}
-                    </div>
                   </div>
-                  <div style={{
-                    border: "1px solid #bc8cff33",
-                    borderRadius: 14, padding: "22px 24px",
-                    background: "linear-gradient(135deg, #0d1117, #bc8cff08)",
-                    opacity: newMembers.length > 0 ? 1 : 0.4,
-                  }}>
-                    <div style={{ fontSize: 10, color: "#8b949e", letterSpacing: 2, textTransform: "uppercase", marginBottom: 10 }}>
-                      New Members (each)
-                    </div>
-                    <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 32, fontWeight: 700, color: "#bc8cff" }}>
-                      {newMembers.length > 0 ? `$${Math.round(newEach).toLocaleString()}` : "—"}
-                    </div>
+                  <div style={{ background: "linear-gradient(135deg, #0d1117, #bc8cff08)", border: "1px solid #bc8cff33", borderRadius: 14, padding: "22px 24px", opacity: newMembers.length > 0 ? 1 : 0.4 }}>
+                    <div style={{ fontSize: 10, color: "#8b949e", letterSpacing: 2, textTransform: "uppercase", marginBottom: 10 }}>New Members (each)</div>
+                    <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 32, fontWeight: 700, color: "#bc8cff" }}>{newMembers.length > 0 ? `$${Math.round(newEach).toLocaleString()}` : "—"}</div>
                     <div style={{ fontSize: 12, color: "#8b949e", marginTop: 6 }}>after 20% tax to orig crew</div>
-                    <div style={{ fontSize: 11, color: "#bc8cff88", marginTop: 10 }}>
-                      {newMembers.length > 0
-                        ? `${newMembers.reduce((s, m) => s + m.devices, 0)} devices · ${(newMembers.reduce((s, m) => s + m.devices, 0) / allDevices * 100).toFixed(1)}% of cluster`
-                        : "Add new members above"}
-                    </div>
                   </div>
                 </div>
               )
             })()}
           </>}
 
-          {/* ── SETTINGS TAB ───────────────────────────────────────────── */}
-          {tab === "settings" && <>
-            {!settingsUnlocked ? (
-              <div style={{
-                maxWidth: 420,
-                margin: "0 auto 24px",
-                background: "#0d1117",
-                border: "1px solid #21262d",
-                borderRadius: 14,
-                padding: "22px 24px",
-                animation: "fadeUp 0.5s ease 0.1s both",
-              }}>
-                <div style={{
-                  fontSize: 10,
-                  color: "#8b949e",
-                  letterSpacing: 2,
-                  textTransform: "uppercase",
-                  marginBottom: 12
-                }}>
-                  Settings Locked
-                </div>
-                <div style={{ color: "#e6edf3", fontSize: 14, marginBottom: 12 }}>
-                  Enter your PIN to access wallet, miner, and location settings.
-                </div>
-                <input
-                  type="password"
-                  inputMode="numeric"
-                  maxLength={8}
-                  value={pinInput}
-                  onChange={e => setPinInput(e.target.value)}
-                  placeholder="Enter PIN"
-                  style={{
-                    width: "100%",
-                    background: "#161b22",
-                    border: "1px solid #21262d",
-                    borderRadius: 8,
-                    padding: "10px 12px",
-                    color: "#e6edf3",
-                    fontSize: 13,
-                    marginBottom: 12,
-                    fontFamily: "'Space Mono', monospace"
-                  }}
-                />
-                <button
-                  onClick={unlockSettings}
-                  style={{
-                    background: "#58a6ff18",
-                    border: "1px solid #58a6ff44",
-                    color: "#58a6ff",
-                    borderRadius: 999,
-                    padding: "8px 14px",
-                    fontSize: 11,
-                    fontWeight: 700,
-                    fontFamily: "'Space Mono', monospace",
-                    cursor: "pointer"
-                  }}
-                >
-                  UNLOCK SETTINGS
-                </button>
-              </div>
-            ) : (
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fit, minmax(260px, 1fr))",
-              gap: 16,
-              marginBottom: 24,
-              animation: "fadeUp 0.5s ease 0.1s both",
-            }}>
-              <div style={{
-                background: "#0d1117",
-                border: "1px solid #21262d",
-                borderRadius: 14,
-                padding: "20px 22px",
-              }}>
-                <div style={{
-                  fontSize: 10,
-                  color: "#8b949e",
-                  letterSpacing: 2,
-                  textTransform: "uppercase",
-                  marginBottom: 12
-                }}>
-                  Wallet Settings
-                </div>
-
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ color: "#8b949e", fontSize: 11, marginBottom: 6 }}>Wallet Label</div>
-                  <input
-                    value={walletLabel}
-                    onChange={e => setWalletLabel(e.target.value)}
-                    style={{
-                      width: "100%",
-                      background: "#161b22",
-                      border: "1px solid #21262d",
-                      borderRadius: 8,
-                      padding: "10px 12px",
-                      color: "#e6edf3",
-                      fontSize: 13
-                    }}
-                  />
-                </div>
-
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ color: "#8b949e", fontSize: 11, marginBottom: 6 }}>BTC Address</div>
-                  <input
-                    value={walletAddress}
-                    onChange={e => setWalletAddress(e.target.value)}
-                    style={{
-                      width: "100%",
-                      background: "#161b22",
-                      border: "1px solid #21262d",
-                      borderRadius: 8,
-                      padding: "10px 12px",
-                      color: "#e6edf3",
-                      fontSize: 13,
-                      fontFamily: "'Space Mono', monospace"
-                    }}
-                  />
-                </div>
-
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ color: "#8b949e", fontSize: 11, marginBottom: 6 }}>Notes</div>
-                  <textarea
-                    value={walletNotes}
-                    onChange={e => setWalletNotes(e.target.value)}
-                    rows={4}
-                    style={{
-                      width: "100%",
-                      background: "#161b22",
-                      border: "1px solid #21262d",
-                      borderRadius: 8,
-                      padding: "10px 12px",
-                      color: "#e6edf3",
-                      fontSize: 13,
-                      resize: "vertical"
-                    }}
-                  />
-                </div>
-
-                <div style={{
-                  marginTop: 14,
-                  padding: "12px 14px",
-                  background: "#161b22",
-                  border: "1px solid #21262d",
-                  borderRadius: 10
-                }}>
-                  <div style={{ color: "#8b949e", fontSize: 10, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>
-                    Preview
-                  </div>
-                  <div style={{ color: "#e6edf3", fontSize: 13, marginBottom: 6 }}>
-                    <b>Label:</b> {walletLabel || "—"}
-                  </div>
-                  <div style={{ color: "#e6edf3", fontSize: 13, marginBottom: 6, wordBreak: "break-all" }}>
-                    <b>Address:</b> {walletAddress ? (showWalletAddress ? walletAddress : `${walletAddress.slice(0, 8)}••••••••••${walletAddress.slice(-6)}`) : "—"}
-                  </div>
-                  <button
-                    onClick={() => setShowWalletAddress(v => !v)}
-                    style={{
-                      background: showWalletAddress ? "#f8514918" : "#58a6ff18",
-                      border: `1px solid ${showWalletAddress ? "#f8514944" : "#58a6ff44"}`,
-                      color: showWalletAddress ? "#f85149" : "#58a6ff",
-                      borderRadius: 999,
-                      padding: "6px 10px",
-                      fontSize: 11,
-                      fontWeight: 700,
-                      fontFamily: "'Space Mono', monospace",
-                      cursor: "pointer",
-                      marginBottom: 10
-                    }}
-                  >
-                    {showWalletAddress ? "HIDE ADDRESS" : "SHOW ADDRESS"}
-                  </button>
-                  <div style={{ color: "#8b949e", fontSize: 12 }}>
-                    {walletNotes || "No notes added."}
-                  </div>
-                </div>
-              </div>
-
-              <div style={{
-                background: "#0d1117",
-                border: "1px solid #21262d",
-                borderRadius: 14,
-                padding: "20px 22px",
-              }}>
-                <div style={{
-                  fontSize: 10,
-                  color: "#8b949e",
-                  letterSpacing: 2,
-                  textTransform: "uppercase",
-                  marginBottom: 12
-                }}>
-                  Location Profiles
-                </div>
-
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
-                  <input
-                    value={newProfileName}
-                    onChange={e => setNewProfileName(e.target.value)}
-                    placeholder="New profile name"
-                    style={{
-                      background: "#161b22",
-                      border: "1px solid #21262d",
-                      borderRadius: 8,
-                      padding: "8px 12px",
-                      color: "#e6edf3",
-                      fontSize: 12,
-                      minWidth: 180
-                    }}
-                  />
-                  <button
-                    onClick={createNewProfile}
-                    style={{
-                      background: "#f7931a18",
-                      border: "1px solid #f7931a44",
-                      color: "#f7931a",
-                      borderRadius: 999,
-                      padding: "6px 12px",
-                      fontSize: 11,
-                      fontWeight: 700,
-                      fontFamily: "'Space Mono', monospace",
-                      cursor: "pointer"
-                    }}
-                  >
-                    CREATE NEW PROFILE
-                  </button>
-                </div>
-
-                <button
-                  onClick={saveCurrentProfile}
-                  style={{
-                    background: "#3fb95018",
-                    border: "1px solid #3fb95044",
-                    color: "#3fb950",
-                    borderRadius: 999,
-                    padding: "6px 12px",
-                    fontSize: 11,
-                    fontWeight: 700,
-                    fontFamily: "'Space Mono', monospace",
-                    cursor: "pointer",
-                    marginBottom: 14
-                  }}
-                >
-                  SAVE CURRENT PROFILE
-                </button>
-
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
-                  {Object.keys(locationProfiles).map(profile => (
-                    <button
-                      key={profile}
-                      onClick={() => applyLocationProfile(profile)}
-                      style={{
-                        background: activeProfile === profile ? "#58a6ff18" : "#161b22",
-                        border: `1px solid ${activeProfile === profile ? "#58a6ff44" : "#21262d"}`,
-                        color: activeProfile === profile ? "#58a6ff" : "#e6edf3",
-                        borderRadius: 999,
-                        padding: "6px 12px",
-                        fontSize: 11,
-                        fontWeight: 700,
-                        fontFamily: "'Space Mono', monospace",
-                        cursor: "pointer"
-                      }}
-                    >
-                      {profile}
-                    </button>
-                  ))}
-                </div>
-
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ color: "#8b949e", fontSize: 11, marginBottom: 6 }}>Profile Name</div>
-                  <input
-                    value={locationName}
-                    onChange={e => setLocationName(e.target.value)}
-                    style={{
-                      width: "100%",
-                      background: "#161b22",
-                      border: "1px solid #21262d",
-                      borderRadius: 8,
-                      padding: "10px 12px",
-                      color: "#e6edf3",
-                      fontSize: 13
-                    }}
-                  />
-                </div>
-
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ color: "#8b949e", fontSize: 11, marginBottom: 6 }}>Expected Subnet</div>
-                  <input
-                    value={locationSubnet}
-                    onChange={e => setLocationSubnet(e.target.value)}
-                    style={{
-                      width: "100%",
-                      background: "#161b22",
-                      border: "1px solid #21262d",
-                      borderRadius: 8,
-                      padding: "10px 12px",
-                      color: "#e6edf3",
-                      fontSize: 13,
-                      fontFamily: "'Space Mono', monospace"
-                    }}
-                  />
-                </div>
-
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ color: "#8b949e", fontSize: 11, marginBottom: 6 }}>Location Notes</div>
-                  <textarea
-                    value={locationNotes}
-                    onChange={e => setLocationNotes(e.target.value)}
-                    rows={4}
-                    style={{
-                      width: "100%",
-                      background: "#161b22",
-                      border: "1px solid #21262d",
-                      borderRadius: 8,
-                      padding: "10px 12px",
-                      color: "#e6edf3",
-                      fontSize: 13,
-                      resize: "vertical"
-                    }}
-                  />
-                </div>
-
-                <div style={{
-                  marginTop: 14,
-                  padding: "12px 14px",
-                  background: "#161b22",
-                  border: "1px solid #21262d",
-                  borderRadius: 10
-                }}>
-                  <div style={{ color: "#8b949e", fontSize: 10, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>
-                    Active Profile Preview
-                  </div>
-                  <div style={{ color: "#e6edf3", fontSize: 13, marginBottom: 6 }}>
-                    <b>Name:</b> {locationName || "—"}
-                  </div>
-                  <div style={{ color: "#e6edf3", fontSize: 13, marginBottom: 6 }}>
-                    <b>Subnet:</b> {locationSubnet || "—"}
-                  </div>
-                  <div style={{ color: "#8b949e", fontSize: 12, marginBottom: 10 }}>
-                    {locationNotes || "No location notes added."}
-                  </div>
-
-                  <div style={{ color: "#8b949e", fontSize: 10, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>
-                    Saved Profiles
-                  </div>
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    {savedProfiles && Object.keys(savedProfiles).length > 0 ? (
-                      Object.keys(savedProfiles).map(profile => (
-                        <div
-                          key={profile}
-                          style={{ display: "inline-flex", gap: 6, alignItems: "center" }}
-                        >
-                          <button
-                            onClick={() => loadSavedProfile(profile)}
-                            style={{
-                              background: "#58a6ff18",
-                              border: "1px solid #58a6ff44",
-                              color: "#58a6ff",
-                              borderRadius: 999,
-                              padding: "4px 10px",
-                              fontSize: 11,
-                              fontWeight: 700,
-                              fontFamily: "'Space Mono', monospace",
-                              cursor: "pointer"
-                            }}
-                          >
-                            LOAD {profile}
-                          </button>
-                          <button
-                            onClick={() => deleteSavedProfile(profile)}
-                            style={{
-                              background: "#f8514918",
-                              border: "1px solid #f8514944",
-                              color: "#f85149",
-                              borderRadius: 999,
-                              padding: "4px 10px",
-                              fontSize: 11,
-                              fontWeight: 700,
-                              fontFamily: "'Space Mono', monospace",
-                              cursor: "pointer"
-                            }}
-                          >
-                            DELETE
-                          </button>
-                        </div>
-                      ))
-                    ) : (
-                      <span style={{ color: "#8b949e", fontSize: 12 }}>No saved profiles yet.</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div style={{
-                background: "#0d1117",
-                border: "1px solid #21262d",
-                borderRadius: 14,
-                padding: "20px 22px",
-              }}>
-                <div style={{
-                  fontSize: 10,
-                  color: "#8b949e",
-                  letterSpacing: 2,
-                  textTransform: "uppercase",
-                  marginBottom: 12
-                }}>
-                  Miner Config
-                </div>
-
-                {[
-                  [miner1Name, setMiner1Name, miner1Ip, setMiner1Ip, "Miner 1"],
-                  [miner2Name, setMiner2Name, miner2Ip, setMiner2Ip, "Miner 2"],
-                  [miner3Name, setMiner3Name, miner3Ip, setMiner3Ip, "Miner 3"]
-                ].map(([name, setName, ip, setIp, label], idx) => (
-                  <div key={idx} style={{
-                    marginBottom: idx < 2 ? 14 : 0,
-                    paddingBottom: idx < 2 ? 14 : 0,
-                    borderBottom: idx < 2 ? "1px solid #21262d" : "none"
-                  }}>
-                    <div style={{ color: "#8b949e", fontSize: 11, marginBottom: 8 }}>{label}</div>
-                    <input
-                      value={name}
-                      onChange={e => setName(e.target.value)}
-                      placeholder="Miner name"
-                      style={{
-                        width: "100%",
-                        background: "#161b22",
-                        border: "1px solid #21262d",
-                        borderRadius: 8,
-                        padding: "10px 12px",
-                        color: "#e6edf3",
-                        fontSize: 13,
-                        marginBottom: 8
-                      }}
-                    />
-                    <input
-                      value={ip}
-                      onChange={e => setIp(e.target.value)}
-                      placeholder="192.168.1.xxx"
-                      style={{
-                        width: "100%",
-                        background: "#161b22",
-                        border: "1px solid #21262d",
-                        borderRadius: 8,
-                        padding: "10px 12px",
-                        color: "#e6edf3",
-                        fontSize: 13,
-                        fontFamily: "'Space Mono', monospace"
-                      }}
-                    />
-                  </div>
-                ))}
-              </div>
-
-              <div style={{
-                background: "#0d1117",
-                border: "1px solid #21262d",
-                borderRadius: 14,
-                padding: "20px 22px",
-              }}>
-                <div style={{
-                  fontSize: 10,
-                  color: "#8b949e",
-                  letterSpacing: 2,
-                  textTransform: "uppercase",
-                  marginBottom: 12
-                }}>
-                  App Controls
-                </div>
-                <div style={{ color: "#e6edf3", fontSize: 14, marginBottom: 8 }}>
-                  Demo/live controls and admin tools will go here.
-                </div>
-                <div style={{ color: "#8b949e", fontSize: 12 }}>
-                  This section will later hold security and configuration actions.
-                </div>
-              </div>
-              <div style={{
-                background: "#0d1117",
-                border: "1px solid #21262d",
-                borderRadius: 14,
-                padding: "20px 22px",
-              }}>
-                <div style={{
-                  fontSize: 10,
-                  color: "#8b949e",
-                  letterSpacing: 2,
-                  textTransform: "uppercase",
-                  marginBottom: 12
-                }}>
-                  Security
-                </div>
-                <div style={{ color: "#e6edf3", fontSize: 14, marginBottom: 10 }}>
-                  Settings are currently unlocked on this device.
-                </div>
-                <div style={{ color: "#8b949e", fontSize: 12, marginBottom: 12 }}>
-                  Current PIN: <span style={{ fontFamily: "'Space Mono', monospace", color: "#e6edf3" }}>{settingsPin}</span>
-                </div>
-
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
-                  <input
-                    type="password"
-                    inputMode="numeric"
-                    maxLength={8}
-                    value={newPinInput}
-                    onChange={e => setNewPinInput(e.target.value)}
-                    placeholder="New PIN"
-                    style={{
-                      background: "#161b22",
-                      border: "1px solid #21262d",
-                      borderRadius: 8,
-                      padding: "8px 12px",
-                      color: "#e6edf3",
-                      fontSize: 12,
-                      minWidth: 140,
-                      fontFamily: "'Space Mono', monospace"
-                    }}
-                  />
-                  <button
-                    onClick={changeSettingsPin}
-                    style={{
-                      background: "#3fb95018",
-                      border: "1px solid #3fb95044",
-                      color: "#3fb950",
-                      borderRadius: 999,
-                      padding: "8px 14px",
-                      fontSize: 11,
-                      fontWeight: 700,
-                      fontFamily: "'Space Mono', monospace",
-                      cursor: "pointer"
-                    }}
-                  >
-                    CHANGE PIN
-                  </button>
-                </div>
-
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ color: "#8b949e", fontSize: 11, marginBottom: 6 }}>API Base URL</div>
-                  <input
-                    value={apiBaseUrl}
-                    onChange={e => setApiBaseUrl(e.target.value)}
-                    placeholder={DEFAULT_API}
-                    style={{
-                      width: "100%",
-                      background: "#161b22",
-                      border: "1px solid #21262d",
-                      borderRadius: 8,
-                      padding: "10px 12px",
-                      color: "#e6edf3",
-                      fontSize: 12,
-                      fontFamily: "'Space Mono', monospace",
-                      marginBottom: 10
-                    }}
-                  />
-                </div>
-
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
-                  <button
-                    onClick={exportConfig}
-                    style={{
-                      background: "#58a6ff18",
-                      border: "1px solid #58a6ff44",
-                      color: "#58a6ff",
-                      borderRadius: 999,
-                      padding: "8px 14px",
-                      fontSize: 11,
-                      fontWeight: 700,
-                      fontFamily: "'Space Mono', monospace",
-                      cursor: "pointer"
-                    }}
-                  >
-                    EXPORT CONFIG
-                  </button>
-
-                  <button
-                    onClick={() => importConfigRef.current?.click()}
-                    style={{
-                      background: "#f7931a18",
-                      border: "1px solid #f7931a44",
-                      color: "#f7931a",
-                      borderRadius: 999,
-                      padding: "8px 14px",
-                      fontSize: 11,
-                      fontWeight: 700,
-                      fontFamily: "'Space Mono', monospace",
-                      cursor: "pointer"
-                    }}
-                  >
-                    IMPORT CONFIG
-                  </button>
-
-                  <input
-                    ref={importConfigRef}
-                    type="file"
-                    accept="application/json"
-                    onChange={importConfigFromFile}
-                    style={{ display: "none" }}
-                  />
-                </div>
-
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <button
-                    onClick={resetDemoConfig}
-                    style={{
-                      background: "#f7931a18",
-                      border: "1px solid #f7931a44",
-                      color: "#f7931a",
-                      borderRadius: 999,
-                      padding: "8px 14px",
-                      fontSize: 11,
-                      fontWeight: 700,
-                      fontFamily: "'Space Mono', monospace",
-                      cursor: "pointer"
-                    }}
-                  >
-                    RESET DEMO
-                  </button>
-
-                  <button
-                    onClick={lockSettings}
-                    style={{
-                      background: "#f8514918",
-                      border: "1px solid #f8514944",
-                      color: "#f85149",
-                      borderRadius: 999,
-                      padding: "8px 14px",
-                      fontSize: 11,
-                      fontWeight: 700,
-                      fontFamily: "'Space Mono', monospace",
-                      cursor: "pointer"
-                    }}
-                  >
-                    LOCK SETTINGS
-                  </button>
-                </div>
-              </div>
-            </div>
-            )}
-          </>}
+          {tab === "simulator" && <SimulatorTab />}
+          {tab === "devices"   && <DevicesTab />}
 
         </div>
       </div>
     </>
   )
 }
+
