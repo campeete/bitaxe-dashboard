@@ -131,6 +131,42 @@ cron.schedule('0 9 * * 0', async () => {
   if (totals) await sendWeeklySummary(totals, cumulative);
 });
 
+// Devices routes — paste into index.js after existing routes
+const { initDevicesTable, getAllDevices, addDevice, updateDevice, removeDevice, SUPPORTED_TYPES } = require('./devices');
+initDevicesTable();
+
+app.get('/api/devices', (req, res) => {
+  try {
+    res.json({ devices: getAllDevices(), supportedTypes: SUPPORTED_TYPES });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/devices', (req, res) => {
+  try {
+    const { ip, name, type, owner, location, notes } = req.body;
+    if (!ip) return res.status(400).json({ error: 'ip required' });
+    if (type && !SUPPORTED_TYPES.includes(type))
+      return res.status(400).json({ error: `type must be one of: ${SUPPORTED_TYPES.join(', ')}` });
+    const device = addDevice({ ip, name, type, owner, location, notes });
+    res.status(201).json(device);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.patch('/api/devices/:ip', (req, res) => {
+  try {
+    const device = updateDevice(decodeURIComponent(req.params.ip), req.body);
+    if (!device) return res.status(404).json({ error: 'Device not found' });
+    res.json(device);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/devices/:ip', (req, res) => {
+  try {
+    removeDevice(decodeURIComponent(req.params.ip));
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── Start ─────────────────────────────────────────────────────────────────────
 app.listen(PORT, () => {
   console.log(`\n⚡ Bitaxe Dashboard Backend running on http://localhost:${PORT}`);
